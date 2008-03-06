@@ -1,9 +1,4 @@
-//#include <windows.h>
 int search (wchar_t* dir, HANDLE hFile) ;
-
-
-
-
 struct TOpcje {
 	wchar_t PodstawowaSciezka [MAX_PATH];
 	wchar_t DodatkowaSciezka [MAX_PATH];
@@ -11,7 +6,6 @@ struct TOpcje {
 
 };
 struct TElement;
-
 struct TKontener {
 	unsigned long int rozmiar;
 	TKontener * nast;
@@ -22,14 +16,7 @@ struct TElement{
 	TElement * nast;
 	char MD5[16];
 	wchar_t sciezka [MAX_PATH];
-
-
-
 };
-
-
-///////////////////////////
-
 
 // na podstawie opcji startuje watek przeszukiwania 
 void start(TOpcje & opcje);

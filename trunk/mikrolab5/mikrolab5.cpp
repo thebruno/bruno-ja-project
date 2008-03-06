@@ -233,7 +233,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 			TOpcje opcje;
-			wcscpy(opcje.PodstawowaSciezka,L"e:\\mp3");
+			wcscpy(opcje.PodstawowaSciezka,L"c:\\asm51");
 			wcscpy(opcje.Raport, L"c:\\raport.txt");
 			start(opcje);
 			//znajdz();
