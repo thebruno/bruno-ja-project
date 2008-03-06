@@ -1,10 +1,11 @@
-
 #include "stdafx.h"
+
 TKontener * glowa_kontener, *ogon_kontener ;
-HANDLE ThreadSzukaj, ThreadMD5;
+HANDLE ThreadSzukaj, ThreadMD5, Semafor;
 
 TElement *zadania [256];
-int ilosc_zadan = 0, nr_zadania = 0;
+// ilosc wszystkich zadan, nr_zadania do przetworzenia jest <=ilosci_zadan
+int ilosc_zadan = 0, nr_zadania = 0, koniec = 0;
 
 const wchar_t* folder = L"d:\\sem6";
 
@@ -201,18 +202,72 @@ int dodaj_element(TKontener * kont, TElement * elem){
 	return 0;
 }
 
+
+
+DWORD WINAPI LiczMd5( LPVOID lpParam ) {
+	DWORD wynik;
+	while (1) {
+		wynik = WaitForSingleObject(Semafor,INFINITE);
+		if (wynik == WAIT_OBJECT_0) {
+			if (ilosc_zadan - nr_zadania){ // ilosc zadan do obsluzenia
+				CountMD5(zadania[nr_zadania]->sciezka,zadania[nr_zadania]->MD5);
+				// wykonano 1 zadanie
+				nr_zadania++;
+
+				if (nr_zadania == ilosc_zadan || nr_zadania > 255){
+					// wykonano wszystkie zadania
+					ilosc_zadan =  nr_zadania = 0;
+				}
+			} else {
+				// nie ma zadan sytuacja 0,0 albo 256, 256
+				ilosc_zadan = nr_zadania = 0;
+			}
+
+		}
+		ReleaseSemaphore(Semafor,1,NULL);
+		if (koniec) 
+			break;
+	}
+	return 0;
+}
+
+
+
+
+
 DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
 	HANDLE hPlik = INVALID_HANDLE_VALUE;
-
+	DWORD ThreadID = 0;
 	hPlik = CreateFile((*(TOpcje*)lpParam).Raport, GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
 	if (hPlik == INVALID_HANDLE_VALUE) {
 		return 1;
 	}
 	init_kontener();
+	// semafor dostepu do zmiennych
+	Semafor = CreateSemaphore(NULL, 1, 1, NULL);
+    if (Semafor == NULL) {
+        return 1 ; // blad
+    }
+	ThreadMD5 = INVALID_HANDLE_VALUE;
+	ThreadMD5 = CreateThread(NULL, 0, LiczMd5, hPlik, 0, &ThreadID); 
+	if (ThreadMD5 == NULL) {
+        ExitProcess(1);
+	}
+
+
 	search((*(TOpcje*)lpParam).PodstawowaSciezka, hPlik);
+	koniec = 1; // daj znac ze konczymy i czekaj na MD5
+
+
+	//////////// tutaj sie nie czeka na zakonczenie MD5
+	/// lista nie jest posortowania po dodaniu elementow
+	// za czesnie wyrzuca kontenery
+	/// blednie byly dodane elementy o tym samym rozmiarze (jeden za drugim w kontenerach
 	WaitForSingleObject(ThreadMD5, INFINITE);
-	//kasuj_liste_kontenerow();
+	kasuj_liste_kontenerow();
 	CloseHandle(hPlik);
+	// czy oby na pewno tutaj?
+	CloseHandle(Semafor);
 	return 0;
 
 }
@@ -224,7 +279,6 @@ void start(TOpcje & opcje){
 	ThreadSzukaj = INVALID_HANDLE_VALUE;
 	ThreadSzukaj = CreateThread(NULL, 0, WatekSzukaj, &opcje, 0, &ThreadID); 
 	if (ThreadSzukaj == NULL) {
-//		HeapFree(GetProcessHeap(), 0, pData);
         ExitProcess(1);
 	}
 	//WaitForSingleObject(hThread, INFINITE);
@@ -248,6 +302,7 @@ int kasuj_liste_kontenerow(){
 	return 0;
 }
 
+
 int kasuj_elementy(TKontener * kontener){
 	TElement * element = 0;
 	if (kontener) {
@@ -260,59 +315,28 @@ int kasuj_elementy(TKontener * kontener){
 	return 0;
 }
 
-DWORD WINAPI LiczMd5( LPVOID lpParam ) {
 
-	while (1) {
-		SuspendThread(ThreadSzukaj);
-		if (ilosc_zadan) {
-			ResumeThread(ThreadSzukaj);
-			CountMD5(zadania[nr_zadania]->sciezka,zadania[nr_zadania]->MD5);
-			// jak sprawdzic czy watek chodzi?????????????????????????????????
-			SuspendThread(ThreadSzukaj);
-			nr_zadania++;
-			ilosc_zadan--;
-			if (ilosc_zadan == 0)
-				break;
-			ResumeThread(ThreadSzukaj);
-		}
-	}
-	ResumeThread(ThreadSzukaj);
-	ThreadMD5 = NULL;
-	return 0;
-}
 
 
 
 int dodaj_zadanie(TElement *element) {
-	SuspendThread(ThreadMD5);
-	// stworz watek jesli trzeba
-	if (ThreadMD5 == NULL) {
-		// najpierw dodaj zadanie
-		zadania[ilosc_zadan++] = element;
-		DWORD ThreadID;
-		ThreadMD5 = INVALID_HANDLE_VALUE;
-		ThreadMD5 = CreateThread(NULL, 0, LiczMd5, NULL, 0, &ThreadID); 
-		if (ThreadMD5 == NULL) {
-//			HeapFree(GetProcessHeap(), 0, pData);
-			ExitProcess(1);
-		}
-	}
-	else {
-		bool wykonano = false;
-		while (!wykonano) {
-			if (ilosc_zadan < 256){
+	DWORD wynik;
+	bool wykonuj = true;
+	while (wykonuj) {
+		wynik = WaitForSingleObject(Semafor,INFINITE);
+		if (wynik == WAIT_OBJECT_0) {
+			if (ilosc_zadan < 255){
 				zadania[ilosc_zadan++] = element;
-				ResumeThread(ThreadMD5);
-				wykonano = true;
+				wykonuj = false;
+				ReleaseSemaphore(Semafor,1, NULL);
 			}
-			else {
-				ResumeThread(ThreadMD5);
-				Sleep(1000);
-				SuspendThread(ThreadMD5);
+			else{
+				// nie ma miejsca musimy poczekac i sprobowac pozniej
+				ReleaseSemaphore(Semafor,1,NULL);
+				Sleep(500);
 			}
 		}
 	}
-	ResumeThread(ThreadMD5);
 	return 0;
 }
 
