@@ -1,0 +1,30 @@
+
+
+void CountMD5(char *filename, unsigned char * wynik){
+	//FILE *file;
+	HANDLE file = NULL;
+	// ilosc wczytanych bajtow
+	unsigned long int read = 0;
+	MD5_CTX context;
+
+	unsigned char buffer[1024], digest[16];
+	
+	// zmienic na CreateFileW - unicode
+	file = CreateFileA(filename,GENERIC_READ,  0, NULL,  OPEN_EXISTING, 0, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		printf ("%s can't be opened\n", filename);
+	}
+
+	else {
+		MD5Init (&context);
+		while (ReadFile (file, buffer, 1024, &read, NULL)&& read)
+			MD5Update (&context, buffer, read);
+
+		MD5Final (wynik, &context);
+		CloseHandle(file);
+		printf ("MD%d (%s) = ", 5, filename);
+		//strncpy((char*)wynik, (char*)digest,16);
+		MDPrint (wynik);
+		printf ("\n");
+	}
+}

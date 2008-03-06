@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mikrolab5", "mikrolab5\mikrolab5.vcproj", "{1F35D634-CE41-463D-9A60-C7957886C8B6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7F9B5DD6-4CDA-4D26-A43E-6F62346F8212} = {7F9B5DD6-4CDA-4D26-A43E-6F62346F8212}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mikrolab5dll", "mikrolab5dll\mikrolab5dll.vcproj", "{7F9B5DD6-4CDA-4D26-A43E-6F62346F8212}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1F35D634-CE41-463D-9A60-C7957886C8B6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1F35D634-CE41-463D-9A60-C7957886C8B6}.Debug|Win32.Build.0 = Debug|Win32
+		{1F35D634-CE41-463D-9A60-C7957886C8B6}.Release|Win32.ActiveCfg = Release|Win32
+		{1F35D634-CE41-463D-9A60-C7957886C8B6}.Release|Win32.Build.0 = Release|Win32
+		{7F9B5DD6-4CDA-4D26-A43E-6F62346F8212}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7F9B5DD6-4CDA-4D26-A43E-6F62346F8212}.Debug|Win32.Build.0 = Debug|Win32
+		{7F9B5DD6-4CDA-4D26-A43E-6F62346F8212}.Release|Win32.ActiveCfg = Release|Win32
+		{7F9B5DD6-4CDA-4D26-A43E-6F62346F8212}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
