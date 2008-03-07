@@ -44,6 +44,7 @@ BEGIN
     BEGIN
         MENUITEM "Open",                        IDM_FILE_OPEN
         MENUITEM "MD5",                         ID_FILE_MD5
+        MENUITEM "Raport",                      ID_FILE_RAPORT
         MENUITEM "E&xit",                       IDM_EXIT
     END
     POPUP "&Help"

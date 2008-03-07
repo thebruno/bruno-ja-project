@@ -9,6 +9,8 @@
 #define MAX_LOADSTRING 100
 // dodatkowe zmienne
 #define MAX_PATH_LENGTH 256
+TOpcje WybraneOpcje;
+
 void* Mem = 0;
 int TextLength = 0;
 // Global Variables:
@@ -45,6 +47,14 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadString(hInstance, IDC_MIKROLAB5, szWindowClass, MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
+
+
+	// przeniesc do miejsca - odczytywanie z okienka
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");
+	//wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\documents");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\Documents and Settings");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\documents");
+	wcscpy(WybraneOpcje.Raport, L"c:\\raport.txt");
 
 	// Perform application initialization:
 	if (!InitInstance (hInstance, nCmdShow))
@@ -150,6 +160,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	HDC hdc;
 	int tempH, tempW;
 
+
+
 	switch (message)
 	{
 	// obsuga zmiany rozmiaru (trzeba modyfikowac wielkosc pola edit)
@@ -220,6 +232,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 
+
+
+		case ID_FILE_RAPORT:
+			generuj_raport(&WybraneOpcje);
+			kasuj_liste_kontenerow();
+
+		break;
 		case ID_FILE_MD5:
 			/*TKontener *k;
 			TElement *e;
@@ -232,10 +251,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 */
 
 
-			TOpcje opcje;
-			wcscpy(opcje.PodstawowaSciezka,L"c:\\asm51");
-			wcscpy(opcje.Raport, L"c:\\raport.txt");
-			start(opcje);
+			kasuj_liste_kontenerow();
+			start(WybraneOpcje);
 			//znajdz();
 			
 			char MD5[16];
@@ -250,8 +267,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			char * sumakontrolna;
 			sumakontrolna = new char [33];
 			sumakontrolna[32] = 0;
-			MD5ToStr(sumakontrolna,MD5);
-			MessageBoxA(NULL,sumakontrolna,"tekst",0);
+			MD5ToAStr(sumakontrolna,MD5);
+			//MessageBoxA(NULL,sumakontrolna,"tekst",0);
 
 
 			delete [] sumakontrolna;
@@ -308,11 +325,4 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-void MD5ToStr(char * output, char * input){
-	int i;
-	for (i = 0; i < 16; i++ ) {
-		output[2*i] = ((input[i]>>4) & 0x0F) < 10?  ((input[i]>>4) & 0x0F)+ 48:((input[i]>>4) & 0x0F) + 55; 
-		output[2*i+1] = (input[i] & 0x0F) < 10?  (input[i] & 0x0F)+ 48:(input[i] & 0x0F) + 55; 
-		
-	}
-}
+
