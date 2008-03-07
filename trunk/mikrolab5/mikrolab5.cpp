@@ -8,7 +8,6 @@
 
 #define MAX_LOADSTRING 100
 // dodatkowe zmienne
-#define MAX_PATH_LENGTH 256
 TOpcje WybraneOpcje;
 
 void* Mem = 0;
@@ -17,7 +16,7 @@ int TextLength = 0;
 HINSTANCE hInst;								// current instance
 HWND hwndEdit;									// pole edit na glownej formatce
 int EditID = 0;
-WCHAR NazwaPliku [MAX_PATH_LENGTH];				// nazwa pliku typu WCHAR *
+WCHAR NazwaPliku [MAX_PATH+1];				// nazwa pliku typu WCHAR *
 
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
@@ -53,7 +52,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");
 	//wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\documents");
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\Documents and Settings");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\documents");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów\\Programowanie - kompilatory, debuggery, serwery, narzêdzia\\delphi 7\\Install\\Delphi7.By.HeCTOr.FWBz\\program files\\Borland\\Delphi7\\Demos\\Corba\\Idl2Pas\\EJB\\euroconverter\\Java\\classes\\Generated Source\\currencyconverter");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
+	
 	wcscpy(WybraneOpcje.Raport, L"c:\\raport.txt");
 
 	// Perform application initialization:

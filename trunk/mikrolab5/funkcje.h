@@ -19,6 +19,11 @@ struct TElement{
 	wchar_t sciezka [MAX_PATH];
 };
 
+struct TEnter {
+	wchar_t enter[3];
+	unsigned int dlugosc;
+};
+
 // na podstawie opcji startuje watek przeszukiwania 
 void start(TOpcje & opcje);
 int init();

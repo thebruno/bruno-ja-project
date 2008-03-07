@@ -1,76 +1,75 @@
 #include "stdafx.h"
 
+
 TKontener * glowa_kontener, *ogon_kontener ;
 HANDLE ThreadSzukaj, ThreadMD5, Semafor;
 const int MAKSYMALNA_ILOSC_ZADAN = 256;
-
+TEnter enter;
 TElement *zadania [MAKSYMALNA_ILOSC_ZADAN];
-// ilosc wszystkich zadan, nr_zadania do przetworzenia jest <=ilosci_zadan
+// nieobsluzonych jest (ilosc_zadan - nr_zadania) 
 int ilosc_zadan = 0, nr_zadania = 0, koniec = 0;
-
-
-
-
-
 
 // sciezka bez gwiazdki!!
 int search (wchar_t* biezacykat, HANDLE hFile) {
-	// do sygnalizowania co liczyc
-	TElement * element = 0;
-	TKontener * kontener = 0;
 	WIN32_FIND_DATA finddata;
-	wchar_t * sciezka = new wchar_t [MAX_PATH];
-	unsigned int dlugosc;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD blad = 0;
+	wchar_t * sciezka = new wchar_t [MAX_PATH];
+	unsigned int dlugosc;
 	unsigned long int written = 0, rozmiar;
-   
-   // Check that the input path plus 2 is not longer than MAX_PATH.
-	dlugosc = (unsigned int) wcsnlen(biezacykat, MAX_PATH);
+	TElement * element = 0;
+	TKontener * kontener = 0;
 
+   // sciezka nie moze byc dluzsza niz MAX_PATH + 2 znakow
+	dlugosc = (unsigned int) wcsnlen(biezacykat, MAX_PATH);
 	if (dlugosc > (MAX_PATH - 2)) {
-		// za dluga sciezka
-		return (-1);
+		return (1); // za dluga sciezka
    }
+	// kopiuj i dodaj "\\*" na koniec
 	wcsncpy(sciezka, biezacykat, MAX_PATH);
 	wcscat(sciezka, L"\\*");
-	
-   // Prepare string for use with FindFile functions.  First, copy the
-   // string to a buffer, then append '\*' to the directory name.
-
-	
+	// najpierw znaleziona jest ".", potem ".." i dopiero potem pliki
 	hFind = FindFirstFile(sciezka, &finddata);
 	if (INVALID_HANDLE_VALUE == hFind)   {
 		blad = GetLastError();
 		return blad;
 	} 
 	else {
-		
-      // List all the other files in the directory.
-		int i = 0;
+		// listuj pliki
 		while (FindNextFile(hFind, &finddata) != 0) {
 			// kropke znajduje przy findfirst
 			if ( !wcscmp(finddata.cFileName,L".."))
 				continue;
 			dlugosc = (unsigned int)wcsnlen(finddata.cFileName, MAX_PATH);
 			WriteFile(hFile,finddata.cFileName,dlugosc*2,&written,NULL);
-			dlugosc = (unsigned int)wcslen(L"\n\r");
-			WriteFile(hFile,L"\r\n",dlugosc *2,&written,NULL);
-
+			// pisz enter
+			WriteFile(hFile,enter.enter,enter.dlugosc * 2,&written,NULL);
 			if (finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
 				wchar_t * nowasciezka;
+				// czy nazwa nie jest za dluga
+				if ((unsigned int)wcsnlen(finddata.cFileName, MAX_PATH) 
+					+ (unsigned int)wcsnlen(biezacykat, MAX_PATH) + 1 > MAX_PATH){ // 1 dla znaku "\\"
+					delete [] sciezka;
+					FindClose(hFind);
+					return blad;
+				}
 				nowasciezka = new wchar_t [MAX_PATH];
-
-				wcsncpy(nowasciezka,biezacykat, MAX_PATH);
+				wcsncpy(nowasciezka, biezacykat, MAX_PATH);
 				wcscat(nowasciezka,L"\\");
 				wcscat(nowasciezka,finddata.cFileName);
 				search(nowasciezka, hFile);
 				delete [] nowasciezka;
-
 			}
 			else {
-			// dodaj plik do listy
+				// dodaj plik do listy
 				wchar_t * nowasciezka;
+				// pomin pliki o za dlugiej nazwie
+				if ((unsigned int)wcsnlen(finddata.cFileName, MAX_PATH) 
+					+ (unsigned int)wcsnlen(biezacykat, MAX_PATH) + 1 > MAX_PATH){ // 1 dla znaku "\\"
+					delete [] sciezka;
+					FindClose(hFind);
+					return blad;
+				}
 				nowasciezka = new wchar_t [MAX_PATH];
 				wcsncpy(nowasciezka,biezacykat, MAX_PATH);
 				wcscat(nowasciezka,L"\\");
@@ -78,59 +77,17 @@ int search (wchar_t* biezacykat, HANDLE hFile) {
 				rozmiar = finddata.nFileSizeHigh;
 				rozmiar <<= 32;
 				rozmiar = finddata.nFileSizeLow;
-				dodaj_kontener(rozmiar,element, nowasciezka);
-
+				dodaj_kontener(rozmiar, element, nowasciezka);
+				// element - ostatni dodany element
 				delete [] nowasciezka;
-
-
 			}
-
-			i++;
 		}
 	}
 	blad = GetLastError();
-	if (blad != ERROR_NO_MORE_FILES) {
-		// to koniec
-	}
 	delete [] sciezka;
 	FindClose(hFind);
 	return blad;
 }
-
-
-
-
-// nieuzywana
-/*
-void znajdz() {
-	HANDLE hFile = INVALID_HANDLE_VALUE, hThread = INVALID_HANDLE_VALUE;
-	DWORD ThreadID;
-	hFile = CreateFile(L"c:\\out.txt", GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
-		if (hFile == INVALID_HANDLE_VALUE) {
-			return;
-		}
-	hThread = CreateThread(NULL,              // default security attributes
-            0,                 // use default stack size  
-            fun,          // thread function 
-            hFile,             // argument to thread function 
-            0,                 // use default creation flags 
-            &ThreadID);   // returns the thread identifier 
-
-        if (hThread == NULL) {
-//           HeapFree(GetProcessHeap(), 0, pData);
-           ExitProcess(1);
-         }
-
-		//WaitForSingleObject(hThread, INFINITE);
-		SuspendThread(hThread);
-
-
-		Sleep(5000);
-		ResumeThread(hThread);
-	return ;
-}*/
-
-
 
 // inicjalizacja
 int init(){
@@ -138,7 +95,8 @@ int init(){
 	ilosc_zadan = nr_zadania = koniec = 0; 
 	glowa_kontener = 0;
 	ogon_kontener = 0;
-	
+	enter.dlugosc= (unsigned int)wcslen(L"\r\n");
+	wcsncpy(enter.enter, L"\r\n", 3);
 	return 0;
 }
 
@@ -233,26 +191,21 @@ DWORD WINAPI LiczMd5( LPVOID lpParam ) {
 				CountMD5(zadania[nr_zadania]->sciezka,zadania[nr_zadania]->MD5);
 				// wykonano 1 zadanie
 				nr_zadania++;
-
 				if (nr_zadania == ilosc_zadan || nr_zadania > MAKSYMALNA_ILOSC_ZADAN - 1){
 					// wykonano wszystkie zadania
 					ilosc_zadan =  nr_zadania = 0;
 				}
 			} else {
-				// nie ma zadan sytuacja 0,0 albo 256, 256
+				// nie ma zadan sytuacja 0,0 albo MAKSYMALNA_ILOSC_ZADAN, MAKSYMALNA_ILOSC_ZADAN
 				ilosc_zadan = nr_zadania = 0;
 				if (koniec) 
 					break;
 			}
-
 		}
 		ReleaseSemaphore(Semafor,1,NULL);
 	}
 	return 0;
 }
-
-
-
 
 
 DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
@@ -267,29 +220,19 @@ DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
     if (Semafor == NULL) {
         return 1 ; // blad
     }
-
 	ThreadMD5 = INVALID_HANDLE_VALUE;
 	ThreadMD5 = CreateThread(NULL, 0, LiczMd5, hPlik, 0, &ThreadID); 
 	if (ThreadMD5 == NULL) {
         ExitProcess(1);
 	}
-
-
 	search((*(TOpcje*)lpParam).PodstawowaSciezka, hPlik);
 	koniec = 1; // daj znac ze konczymy i czekaj na MD5
 
-
-	//////////// tutaj sie nie czeka na zakonczenie MD5
-	/// lista nie jest posortowania po dodaniu elementow
-	// za czesnie wyrzuca kontenery
-	/// blednie byly dodane elementy o tym samym rozmiarze (jeden za drugim w kontenerach
 	WaitForSingleObject(ThreadMD5, INFINITE);
-	//kasuj_liste_kontenerow();
+	//kasuj_liste_kontenerow(); - kasujemy na zyczenie
 	CloseHandle(hPlik);
-	// czy oby na pewno tutaj?
 	CloseHandle(Semafor);
 	return 0;
-
 }
 
 
@@ -356,7 +299,7 @@ int dodaj_zadanie(TElement *element) {
 			else{
 				// nie ma miejsca musimy poczekac i sprobowac pozniej
 				ReleaseSemaphore(Semafor,1,NULL);
-				Sleep(500);
+				Sleep(5);
 			}
 		}
 	}
