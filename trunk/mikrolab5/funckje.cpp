@@ -2,12 +2,13 @@
 
 TKontener * glowa_kontener, *ogon_kontener ;
 HANDLE ThreadSzukaj, ThreadMD5, Semafor;
+const int MAKSYMALNA_ILOSC_ZADAN = 256;
 
-TElement *zadania [256];
+TElement *zadania [MAKSYMALNA_ILOSC_ZADAN];
 // ilosc wszystkich zadan, nr_zadania do przetworzenia jest <=ilosci_zadan
 int ilosc_zadan = 0, nr_zadania = 0, koniec = 0;
 
-const wchar_t* folder = L"d:\\sem6";
+
 
 
 
@@ -48,6 +49,7 @@ int search (wchar_t* biezacykat, HANDLE hFile) {
       // List all the other files in the directory.
 		int i = 0;
 		while (FindNextFile(hFind, &finddata) != 0) {
+			// kropke znajduje przy findfirst
 			if ( !wcscmp(finddata.cFileName,L".."))
 				continue;
 			dlugosc = (unsigned int)wcsnlen(finddata.cFileName, MAX_PATH);
@@ -55,7 +57,7 @@ int search (wchar_t* biezacykat, HANDLE hFile) {
 			dlugosc = (unsigned int)wcslen(L"\n\r");
 			WriteFile(hFile,L"\r\n",dlugosc *2,&written,NULL);
 
-			if (finddata.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY ){
+			if (finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
 				wchar_t * nowasciezka;
 				nowasciezka = new wchar_t [MAX_PATH];
 
@@ -130,10 +132,13 @@ void znajdz() {
 
 
 
-
-int init_kontener(){
+// inicjalizacja
+int init(){
+	ThreadMD5 = ThreadSzukaj = Semafor = INVALID_HANDLE_VALUE;
+	ilosc_zadan = nr_zadania = koniec = 0; 
 	glowa_kontener = 0;
 	ogon_kontener = 0;
+	
 	return 0;
 }
 
@@ -229,19 +234,19 @@ DWORD WINAPI LiczMd5( LPVOID lpParam ) {
 				// wykonano 1 zadanie
 				nr_zadania++;
 
-				if (nr_zadania == ilosc_zadan || nr_zadania > 255){
+				if (nr_zadania == ilosc_zadan || nr_zadania > MAKSYMALNA_ILOSC_ZADAN - 1){
 					// wykonano wszystkie zadania
 					ilosc_zadan =  nr_zadania = 0;
 				}
 			} else {
 				// nie ma zadan sytuacja 0,0 albo 256, 256
 				ilosc_zadan = nr_zadania = 0;
+				if (koniec) 
+					break;
 			}
 
 		}
 		ReleaseSemaphore(Semafor,1,NULL);
-		if (koniec) 
-			break;
 	}
 	return 0;
 }
@@ -257,7 +262,6 @@ DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
 	if (hPlik == INVALID_HANDLE_VALUE) {
 		return 1;
 	}
-	init_kontener();
 	// semafor dostepu do zmiennych
 	Semafor = CreateSemaphore(NULL, 1, 1, NULL);
     if (Semafor == NULL) {
@@ -291,6 +295,7 @@ DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
 
 
 void start(TOpcje & opcje){
+	init();
 	DWORD ThreadID;
 	ThreadSzukaj = INVALID_HANDLE_VALUE;
 	ThreadSzukaj = CreateThread(NULL, 0, WatekSzukaj, &opcje, 0, &ThreadID); 
@@ -315,6 +320,8 @@ int kasuj_liste_kontenerow(){
 		kasuj_elementy(temp);
 		delete temp;
 	}
+	glowa_kontener = 0;
+	ogon_kontener = 0;
 	return 0;
 }
 
@@ -341,7 +348,7 @@ int dodaj_zadanie(TElement *element) {
 	while (wykonuj) {
 		wynik = WaitForSingleObject(Semafor,INFINITE);
 		if (wynik == WAIT_OBJECT_0) {
-			if (ilosc_zadan < 255){
+			if (ilosc_zadan < MAKSYMALNA_ILOSC_ZADAN - 1){
 				zadania[ilosc_zadan++] = element;
 				wykonuj = false;
 				ReleaseSemaphore(Semafor,1, NULL);
@@ -356,24 +363,81 @@ int dodaj_zadanie(TElement *element) {
 	return 0;
 }
 
-int generuj_raport(TKontener * glowa){
+int generuj_raport(TOpcje *opcje){
+	TKontener * glowa = glowa_kontener;
+	HANDLE hPlik = INVALID_HANDLE_VALUE;
+	wchar_t WMD5[32+1];  // MD5 ma 16 bajtow, 32 znaki (char albo wchar_t)
+	unsigned long int written = 0;
+	unsigned long int dlugosc;
+	WMD5[32] = (WCHAR) 0; // dodaj zero na koniec
+	TElement * elem = 0;
+	//hPlik = CreateFile((*(TOpcje*)lpParam).Raport, GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
+	hPlik = CreateFile(L"c:\\duplikaty.txt", GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
+	if (hPlik == INVALID_HANDLE_VALUE) {
+		return 1;
+	}
+	while (glowa) {
+		if (glowa->ilosc_elementow > 1){
+			elem = glowa->glowa;
+		}
+		else {
+			elem = 0;
 
+		}
+		while(elem) {
+			dlugosc = (unsigned int)wcslen(elem->sciezka);
+			WriteFile(hPlik,elem->sciezka,dlugosc * 2,&written,NULL);
+			dlugosc = (unsigned int)wcslen(L"\n\r");
+			WriteFile(hPlik,L"\r\n",dlugosc * 2,&written,NULL);
+			MD5ToWStr(WMD5,elem->MD5);
+			dlugosc = (unsigned int)wcslen(WMD5);
+			WriteFile(hPlik,WMD5,dlugosc * 2,&written,NULL);
+			dlugosc = (unsigned int)wcslen(L"\n\r");
+			WriteFile(hPlik,L"\r\n",dlugosc *2,&written,NULL);
+			elem = elem->nast;
 
-
+		}
+		glowa = glowa->nast;
+	}
+	CloseHandle(hPlik);
 	return 0;
 }
 
 /*
-
 /////////// przydzial pamieci
-
         // Allocate memory for thread data.
-
         pData = (typ) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
                 sizeof(typ));
-
       if( pData == NULL )
            ExitProcess(2);
-
-
 	*/
+
+// konwersja input binarnego na znaki typu wide char
+void MD5ToWStr(wchar_t * output, char * input){
+	int i;
+	char temp[32];
+	for (i = 0; i < 16; i++ ) {
+		temp[2*i] = ((input[i]>>4) & 0x0F) < 10?  ((input[i]>>4) & 0x0F)+ 48:((input[i]>>4) & 0x0F) + 55; 
+		temp[2*i+1] = (input[i] & 0x0F) < 10?  (input[i] & 0x0F)+ 48:(input[i] & 0x0F) + 55; 
+	}
+	MultiByteToWideChar(CP_ACP,MB_PRECOMPOSED,temp, 32, output, 32);
+}
+
+// konwersja input binarnego na znaki typu char
+void MD5ToAStr(char * output, char * input){
+	int i;
+	for (i = 0; i < 16; i++ ) {
+		output[2*i] = ((input[i]>>4) & 0x0F) < 10?  ((input[i]>>4) & 0x0F)+ 48:((input[i]>>4) & 0x0F) + 55; 
+		output[2*i+1] = (input[i] & 0x0F) < 10?  (input[i] & 0x0F)+ 48:(input[i] & 0x0F) + 55; 
+	}
+}
+
+
+
+
+
+
+
+///////////////TODO
+// dodac warunek aby nie sprawdzal sumy kontrolnej dla pustych plikow
+// pliki, ktorych sie nie da otworzyc generuja bledna sume (nie oblicza sie dla niech smua)

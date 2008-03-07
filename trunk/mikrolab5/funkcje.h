@@ -21,7 +21,7 @@ struct TElement{
 
 // na podstawie opcji startuje watek przeszukiwania 
 void start(TOpcje & opcje);
-int init_kontener();
+int init();
 // zwraca 0 - dodano element, 1 - element istnieje, 2 - blad, wskaznik na utworzony(dodany)  element przez element
 int dodaj_kontener(unsigned long int rozmiar, TElement * element, wchar_t* sciezka);
 int kasuj_liste_kontenerow();
@@ -29,7 +29,9 @@ int kasuj_liste_kontenerow();
 int dodaj_element(TKontener * kont, TElement * elem);
 int kasuj_elementy(TKontener * kontener);
 int dodaj_zadanie(TElement *element);
-int generuj_raport(TKontener * glowa);
+int generuj_raport(TOpcje *opcje);
+void MD5ToWStr(wchar_t * output, char * input); //wchar_t
+void MD5ToAStr(char * output, char * input); //ansi
 
 
 

@@ -8,4 +8,3 @@ extern "C" void __stdcall CloseMapFile(void);
 extern "C" int __stdcall CountMD5(wchar_t*,  char *);
 
 
-void MD5ToStr(char * output, char * input);
