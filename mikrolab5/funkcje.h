@@ -8,6 +8,7 @@ struct TOpcje {
 struct TElement;
 struct TKontener {
 	unsigned long int rozmiar;
+	unsigned int ilosc_elementow;
 	TKontener * nast;
 	TElement * glowa, *ogon;
 
@@ -28,6 +29,7 @@ int kasuj_liste_kontenerow();
 int dodaj_element(TKontener * kont, TElement * elem);
 int kasuj_elementy(TKontener * kontener);
 int dodaj_zadanie(TElement *element);
+int generuj_raport(TKontener * glowa);
 
 
 

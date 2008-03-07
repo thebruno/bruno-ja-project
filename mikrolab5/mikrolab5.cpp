@@ -277,6 +277,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		if (Mem!= 0)
 			CloseMapFile();
+		kasuj_liste_kontenerow();
 		PostQuitMessage(0);
 		break;
 	default:

@@ -155,36 +155,50 @@ int dodaj_kontener(unsigned long int rozmiar, TElement * element, wchar_t * scie
 			return 2; //blad
 		}
 		glowa_kontener = temp;
+		temp->ilosc_elementow = 1;
+		temp->nast = 0;
 		temp->glowa = element;
-		temp ->nast = 0;
 		temp->ogon = element;
 		temp->rozmiar = rozmiar;
 	}
-		
 	else{
 		temp = wstaw = glowa_kontener;
-		while (temp && temp->rozmiar < rozmiar) {
+		// wstawiamy za elementem wstaw, z wyjatkiem glowy
+		while (temp && rozmiar < temp->rozmiar) {
 			wstaw = temp;			
 			temp = temp->nast;
 		}
-
-
+		// dodaj element do istniejacego kontenera
 		if (temp && temp->rozmiar == rozmiar){
 			dodaj_element(temp, element);
-			dodaj_zadanie(element);
 			// sygnalizuj ze gdzies sa 2 elementy o tym samym rozmiarze
+			dodaj_zadanie(element);
 		} else {
+			// towrzymy nowy kontener
 			temp = new TKontener;
 			if (!temp) {
 				delete element;
 				return 2; //blad
 			}
-			// wstawiamy za kontenerem wstaw, w kontenerze 1 element
-			temp->nast = wstaw->nast;
-			wstaw->nast = temp;
-			temp->glowa = element;
-			temp->ogon = element;
+			// kontener jest nowy, wiec mozna to przypisac
+			temp->glowa = temp->ogon = element;
 			temp->rozmiar = rozmiar;
+			temp->ilosc_elementow = 1;
+			if (wstaw == glowa_kontener){
+				// wstawiamy jako glowa lub za glowa (trzeba osobno rozpatrzyc)
+				if (rozmiar > glowa_kontener->rozmiar) {
+					//nowa glowa
+					temp->nast = glowa_kontener;
+					glowa_kontener = temp;
+				} else {
+					// wstawiamy za glowa
+					temp->nast = glowa_kontener->nast;
+					glowa_kontener->nast = temp;
+				}
+			} else {
+				temp->nast = wstaw->nast;
+				wstaw->nast = temp;
+			}
 		}
 	}
 	return 0;
@@ -194,11 +208,12 @@ int dodaj_kontener(unsigned long int rozmiar, TElement * element, wchar_t * scie
 // dodanie na koniec listy
 int dodaj_element(TKontener * kont, TElement * elem){
 	TElement *temp = kont->ogon;
-	// co najmniej 1 istanieje, trzeba dla niego policzyc MD5
+	// istnieje dokladnie 1 element, dla ktorego nie policzono jeszcze MD5
 	if (kont->ogon == kont->glowa)
 		dodaj_zadanie(kont->glowa);
 	temp->nast = elem;
 	kont->ogon = elem;
+	kont->ilosc_elementow++;
 	return 0;
 }
 
@@ -248,6 +263,7 @@ DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
     if (Semafor == NULL) {
         return 1 ; // blad
     }
+
 	ThreadMD5 = INVALID_HANDLE_VALUE;
 	ThreadMD5 = CreateThread(NULL, 0, LiczMd5, hPlik, 0, &ThreadID); 
 	if (ThreadMD5 == NULL) {
@@ -264,7 +280,7 @@ DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
 	// za czesnie wyrzuca kontenery
 	/// blednie byly dodane elementy o tym samym rozmiarze (jeden za drugim w kontenerach
 	WaitForSingleObject(ThreadMD5, INFINITE);
-	kasuj_liste_kontenerow();
+	//kasuj_liste_kontenerow();
 	CloseHandle(hPlik);
 	// czy oby na pewno tutaj?
 	CloseHandle(Semafor);
@@ -340,7 +356,12 @@ int dodaj_zadanie(TElement *element) {
 	return 0;
 }
 
+int generuj_raport(TKontener * glowa){
 
+
+
+	return 0;
+}
 
 /*
 
