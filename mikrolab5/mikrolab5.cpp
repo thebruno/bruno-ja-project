@@ -49,12 +49,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 
 	// przeniesc do miejsca - odczytywanie z okienka
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");
 	//wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\documents");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\Documents and Settings");
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów\\Programowanie - kompilatory, debuggery, serwery, narzêdzia\\delphi 7\\Install\\Delphi7.By.HeCTOr.FWBz\\program files\\Borland\\Delphi7\\Demos\\Corba\\Idl2Pas\\EJB\\euroconverter\\Java\\classes\\Generated Source\\currencyconverter");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
 	
+
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\Documents and Settings");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Documents");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"e:\\mp3");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
+
 	wcscpy(WybraneOpcje.Raport, L"c:\\raport.txt");
 
 	// Perform application initialization:

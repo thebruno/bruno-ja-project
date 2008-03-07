@@ -15,6 +15,7 @@ struct TKontener {
 };
 struct TElement{
 	TElement * nast;
+	bool zaznaczony;
 	char MD5[16];
 	wchar_t sciezka [MAX_PATH];
 };
@@ -35,9 +36,10 @@ int dodaj_element(TKontener * kont, TElement * elem);
 int kasuj_elementy(TKontener * kontener);
 int dodaj_zadanie(TElement *element);
 int generuj_raport(TOpcje *opcje);
+int generuj_raport1(TOpcje *opcje);
 void MD5ToWStr(wchar_t * output, char * input); //wchar_t
 void MD5ToAStr(char * output, char * input); //ansi
-
+int MD5Cmp(char *src1, char *src2);
 
 
 
