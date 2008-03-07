@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/07/08 14:47:54
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/07/08 20:05:36
 .\md5.asm						     Page 1 - 1
 
 
@@ -1331,7 +1331,7 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/07/08 14:47:54
 
 				; ta linijka zawiesza masma
 				; mov EBX, offset (MD5_CTX ptr [EBX]).state
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/07/08 14:47:54
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/07/08 20:05:36
 .\md5.asm						     Symbols 2 - 1
 
 
