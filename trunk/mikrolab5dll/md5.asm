@@ -220,7 +220,7 @@ MD5Update ENDP
 ; nic nie zwraca
 ; przez digest zwraca obliczone MD5
 ;###########################################################
-MD5Final PROC uses EAX EBX, digest:DWORD, context:DWORD
+MD5Final PROC uses EAX EBX ESI EDI, digest:DWORD, context:DWORD
 LOCAL index:DWORD, padLen:DWORD, bits[8]:DWORD
 
 	mov EBX, context									; zamieniamy bity na bajty
@@ -228,7 +228,7 @@ LOCAL index:DWORD, padLen:DWORD, bits[8]:DWORD
 	shr EAX, 3
 	and EAX, 03fh
 	
-	
+
 	; zapamietaj aktualna ilosc bitow zamiast encode
 	lea ESI, (MD5_CTX ptr [EBX]).count				; polozenie MD5 (zrodlo)
 	lea EDI, bits									; polozenie MD5 (cel)

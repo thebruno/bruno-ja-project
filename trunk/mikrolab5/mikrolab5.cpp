@@ -54,9 +54,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	
 
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\Documents and Settings");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Documents");
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"e:\\mp3");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
 
 	wcscpy(WybraneOpcje.Raport, L"c:\\raport.txt");
