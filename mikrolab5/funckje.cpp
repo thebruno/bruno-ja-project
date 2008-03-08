@@ -82,7 +82,7 @@ int search (wchar_t* biezacykat, HANDLE hFile) {
 				// okazuje sie ze unsigned long int ma 32 bity...
 				rozmiar = finddata.nFileSizeHigh;
 				rozmiar <<= 32;
-				rozmiar = finddata.nFileSizeLow;
+				rozmiar += finddata.nFileSizeLow;
 				dodaj_kontener(rozmiar, element, nowasciezka);
 				// element - ostatni dodany element
 				delete [] nowasciezka;
@@ -106,7 +106,7 @@ int init(){
 	return 0;
 }
 
-int dodaj_kontener(unsigned long int rozmiar, TElement * element, wchar_t * sciezka){
+int dodaj_kontener(unsigned long long int rozmiar, TElement * element, wchar_t * sciezka){
 	TKontener *temp = 0, *wstaw = 0;
 	// tworz element
 	element = 0;
@@ -195,12 +195,15 @@ int dodaj_element(TKontener * kont, TElement * elem){
 
 
 DWORD WINAPI LiczMd5( LPVOID lpParam ) {
+	// wywalic
+	char bytes[100];
 	DWORD wynik, wynik_obliczen;
 	while (1) {
 		wynik = WaitForSingleObject(Semafor,INFINITE);
 		if (wynik == WAIT_OBJECT_0) {
 			if (ilosc_zadan - nr_zadania){ // ilosc zadan do obsluzenia
 				wynik_obliczen = CountMD5(zadania[nr_zadania]->sciezka,zadania[nr_zadania]->MD5);
+				//wynik_obliczen = CountMD5(L"c:\\asm51\\TEST1.HEX",bytes);
 				if (wynik_obliczen) {
 					// nie udalo sie otworzyc pliku przypisujemy mu niemozliwa sume 0
 					for(int i=0; i < 16; i++) {
@@ -448,3 +451,4 @@ int MD5Cmp(char *src1, char *src2){
 
 
 ///////////////TODO
+//poprawic warningi przy int64

@@ -29,7 +29,7 @@ struct TEnter {
 void start(TOpcje & opcje);
 int init();
 // zwraca 0 - dodano element, 1 - element istnieje, 2 - blad, wskaznik na utworzony(dodany)  element przez element
-int dodaj_kontener(unsigned long int rozmiar, TElement * element, wchar_t* sciezka);
+int dodaj_kontener(unsigned long long int rozmiar, TElement * element, wchar_t* sciezka);
 int kasuj_liste_kontenerow();
 // do ktorego kontenera dodac i co
 int dodaj_element(TKontener * kont, TElement * elem);
