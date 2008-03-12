@@ -12,13 +12,6 @@ INCLUDELIB   lib\kernel32.lib
 INCLUDELIB   lib\user32.lib
 
 
-
- 
-
-
-
-
-; ####################################################################################################################
 ; ############################################  CODE   ###############################################################
 .CODE
 
@@ -30,19 +23,14 @@ DllEntry ENDP
 
 
 
-
-;###########TO DO
-; sprawdzic logicznie CountMD5
-
-;------------------------------------------------------------------------------------------------------------------------
-
 ;###########################################################
 ; CountMD5 oblicza wartosc MD5
-; przyjmuje wskaznik na sciezke (filename), typ char *
+; otwiera plik, odczytuje go i liczy MD5
+; przyjmuje wskaznik na sciezke (filename), typ wchar_t *
 ; oraz wskaznik na przydzielona pamiec - 16 B dla wyniku
 ; typu unsigned char *
 ; zwraca 0 gdy OK, 1 gdy blad
-; dopisac uses...
+; modyfikuje tylko EAX
 ;###########################################################
 
 CountMD5 PROC filename:DWORD, MD5:DWORD
@@ -51,30 +39,26 @@ CountMD5 PROC filename:DWORD, MD5:DWORD
 	LOCAL context: MD5_CTX					; struktura z obliczana suma, iloscia bitow i buforem podrecznym
 
 
-	invoke CreateFileW, filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL		; otworz plik
+	invoke CreateFileW, filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL		; otworz plik, sciezka wchar_t*
 	.IF EAX == INVALID_HANDLE_VALUE
 		mov EAX, 1
 		ret																			; nie udalo sie utworzyc pliku
 	.ENDIF
 	
 	; udalo sie utworzyc plik
-	mov file, EAX					; file zawiera uchwyta na plik
-	invoke MD5Init, ADDR context	; inicjalizacja MD5
+	mov file, EAX										; file zawiera uchwyta na plik
+	invoke MD5Init, ADDR context						; inicjalizacja MD5
 
 petla: 
 	invoke ReadFile, file, ADDR buffer, BUF_SIZE, ADDR read, NULL	; wypelnij duzy buffor
 	; trzeba sprawdzic co ReadFile zwroci oraz co parametr read
-	.IF EAX == 0													; sprawdz co zwraca ReadFile 
-		jmp koniec_petli											; 0 (chyba blad odczytu) - koniec petli
+	.IF EAX == 0 ||	read == 0									; sprawdz co zwraca ReadFile 
+		jmp koniec_petli										; 0 - byl blad odczytu lub odczytano 0 znakow
+																; - koniec petli
 	.ENDIF
-	
-	.IF read == 0													; odczytano 0 znakow - koniec petli
-		jmp koniec_petli
-	.ENDIF
-	
 	invoke MD5Update, ADDR context, ADDR buffer, read				; licz dalej MD5
 	jmp petla														; kontynuacja petli
-
+	
 koniec_petli:
 	invoke MD5Final, MD5, ADDR context					; dokoncz liczenie
 	invoke CloseHandle, file; konczenie
@@ -84,13 +68,14 @@ CountMD5 ENDP
 ;###########################################################
 ; koniec CountMD5
 ;###########################################################
-;-----------------------------------------------------------------------------------------------------------------------
 
 
 
 ;###########################################################
 ; inicjalizacja MD5, nowy context
 ; przyjmuje wskaznik na strukture MD5_CTX
+; wypelnia ilosc bitow zerem i ustawia wartosci poczatkowe
+; dla stanu
 ; nic nie zwraca
 ;###########################################################
 MD5Init PROC uses EBX, context:DWORD
@@ -106,7 +91,7 @@ MD5Init PROC uses EBX, context:DWORD
 	mov (MD5_CTX ptr [EBX]).state[1*DWORD_LENGTH], 0efcdab89h
 	mov (MD5_CTX ptr [EBX]).state[2*DWORD_LENGTH], 098badcfeh
 	mov (MD5_CTX ptr [EBX]).state[3*DWORD_LENGTH], 010325476h
-
+	
 	ret
 MD5Init ENDP
 ;###########################################################
@@ -123,16 +108,13 @@ MD5Init ENDP
 ; unsigned int
 ; nic nie zwraca
 ;###########################################################
-MD5Update PROC uses EBX ECX EDI ESI, context:DWORD, input:DWORD, inputLen:DWORD
-	; LOCAL i:DWORD ; zamiast i jest ECX
+MD5Update PROC uses EBX ECX EDX EDI ESI, context:DWORD, input:DWORD, inputLen:DWORD
 	LOCAL index:DWORD, partLen:DWORD
-
 	mov EBX, context					; EBX zawiera adres struktury MD5_CTX
 
 	; oblicz ilosc bajtow modulo 64
 	mov EAX, (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH]
 	shr EAX, 3
-	; dlaczego w reference tutaj jest 03Fh a nie 01Fh????????#########################################################################
 	and EAX, 03Fh
 	mov index, EAX
 
@@ -146,7 +128,6 @@ MD5Update PROC uses EBX ECX EDI ESI, context:DWORD, input:DWORD, inputLen:DWORD
 	jae @F
 		inc (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH]		; jesli przebilo to trzeba do starszej czesci count dodac 1
 @@:
-
 
 	; zawsze dodajemy 3 najstarsze bity inputLen (bo liczba bitow wej jest 35 bitowa
 	; inputLen (32bity) przesuwamy o 3 w lewo
@@ -164,21 +145,24 @@ MD5Update PROC uses EBX ECX EDI ESI, context:DWORD, input:DWORD, inputLen:DWORD
 		lea EDI, (MD5_CTX ptr [EBX]).buffer 
 		add EDI, index
 		mov ESI, input						; adres wejscia, input jest juz wskaznikiem
-		MD5_memcpy EDI, ESI, partLen		; kopiuj - jest to makro, nie funkcja
-
-		invoke MD5Transform, ADDR (MD5_CTX ptr [EBX]).state, ADDR (MD5_CTX ptr [EBX]).buffer	; wykonaj co najmniej 1 raz 
-	
+		MD5_memcpy partLen			; kopiuj - jest to makro, nie funkcja
+			
+		lea EDI, (MD5_CTX ptr [EBX]).state
+		lea ESI, (MD5_CTX ptr [EBX]).buffer
+		invoke MD5Transform 
 		mov ECX, partLen	
 	petla:
-		mov EAX, ECX
+		mov EAX, ECX		
 		add EAX, 63
 		.IF EAX >= inputLen
 			jmp koniec_petli
 		.ENDIF
 		
 		mov EAX, input						; input to adres, dlatego trzeba sie przez rejestr odwolywac
-		invoke MD5Transform, ADDR (MD5_CTX ptr [EBX]).state, ADDR [EAX][ECX] 
 		
+		lea EDI, (MD5_CTX ptr [EBX]).state
+		lea ESI, [EAX][ECX] 
+		invoke MD5Transform 		
 
 		add ECX, 64
 		jmp petla
@@ -202,15 +186,13 @@ koniec_petli:
 	mov ESI, input							; kolejny bajt z wejscia
 	add ESI, ECX
 	
-	
-	MD5_memcpy EDI, ESI, inputLen			; bez " - i"
+	MD5_memcpy inputLen			; bez " - i"
 	ret
 MD5Update ENDP
 ;###########################################################
 ; koniec MD5Update
 ;###########################################################
 
-;------------------------------------------------------------------------------------------------------------------------
 
 ;###########################################################
 ; koniczenie obliczania, zapisuje wynik dzialania, zeruje
@@ -222,17 +204,15 @@ MD5Update ENDP
 ;###########################################################
 MD5Final PROC uses EAX EBX ESI EDI, digest:DWORD, context:DWORD
 LOCAL index:DWORD, padLen:DWORD, bits[8]:DWORD
-
 	mov EBX, context									; zamieniamy bity na bajty
 	mov EAX, (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH]
 	shr EAX, 3
 	and EAX, 03fh
-	
 
 	; zapamietaj aktualna ilosc bitow zamiast encode
 	lea ESI, (MD5_CTX ptr [EBX]).count				; polozenie MD5 (zrodlo)
 	lea EDI, bits									; polozenie MD5 (cel)
-	MD5_memcpy EDI, ESI, 8				
+	MD5_memcpy 8				
 	
 	.IF EAX < 56				; EAX to jest index
 		mov padLen, 56
@@ -251,11 +231,9 @@ LOCAL index:DWORD, padLen:DWORD, bits[8]:DWORD
 	; zamiast encode jest zwykle kopiowanie
 	lea ESI, (MD5_CTX ptr [EBX]).state				; polozenie MD5 (zrodlo)
 	mov EDI, digest									; polozenie MD5 (cel)
-	MD5_memcpy EDI, ESI, 16							; kopiuj 16 B
+	MD5_memcpy 16							; kopiuj 16 B
 	
 	;; dopisac MD5_memset
-
-
 ret
 MD5Final ENDP
 ;###########################################################
@@ -264,32 +242,24 @@ MD5Final ENDP
 
 
 
-
-
 ;###########################################################
 ; bazowe przeksztalcenia MD5, przetwarza 64 bajtowy blok
-; przyjmuje wskaznik na 4 integery oraz wskaznik na 
-; 64 bajtowy blok danych typu unsigned char 
+; przyjmuje wskaznik na 4 integery przez EDI 
+; oraz wskaznik na 64 bajtowy blok danych typu 
+; unsigned charprzez ESI
 ; nic nie zwraca
-
-; napisac co robi
-; zoptymalizowaæ uzywane rejestry
+; modyfikuje EAX, EBX, ECX, EDX
+; ale trzeba zapamietac tylko EBX, ECX
 ;###########################################################
-; uzywane jeszcze EDX EDI ESI
-MD5Transform PROC uses EBX ECX , state:DWORD, block:DWORD
+MD5Transform PROC uses EBX ECX
 	; zmienne a,b,c,d zast¹pione przez rejestry
-	
-	;invoke Decode, ADDR MD5x, block, 64			; block to juz jest adres niepotrzebne operujemy bezposrenio na bloku
-	
-	; inicjalizacja 4 czesci MD5 (a,b,c,d) z tablicy wskazywanej przez state
-	mov ESI, state
-	mov EAX, [ESI]
-	mov EBX, [ESI + 1 * DWORD_LENGTH]
-	mov ECX, [ESI + 2 * DWORD_LENGTH]
-	mov EDX, [ESI + 3 * DWORD_LENGTH]
-	
-	mov ESI, block
-	
+	; inicjalizacja 4 czesci MD5 (a,b,c,d) z tablicy wskazywanej przez EDI (state)
+	mov EAX, [EDI]
+	mov EBX, [EDI + 1 * DWORD_LENGTH]
+	mov ECX, [EDI + 2 * DWORD_LENGTH]
+	mov EDX, [EDI + 3 * DWORD_LENGTH]
+
+	push EDI ; bo wszystkie funkcje go modyfikuja 
 	; runda 1
 	FF EAX, EBX, ECX, EDX, [ESI + 0 * DWORD_LENGTH], S11, 0d76aa478h ; /* 1 */
 	FF EDX, EAX, EBX, ECX, [ESI + 1 * DWORD_LENGTH], S12, 0e8c7b756h ; /* 2 */
@@ -307,9 +277,6 @@ MD5Transform PROC uses EBX ECX , state:DWORD, block:DWORD
 	FF EDX, EAX, EBX, ECX, [ESI +13 * DWORD_LENGTH], S12, 0fd987193h ; /* 14 */
 	FF ECX, EDX, EAX, EBX, [ESI +14 * DWORD_LENGTH], S13, 0a679438eh ; /* 15 */
 	FF EBX, ECX, EDX, EAX, [ESI +15 * DWORD_LENGTH], S14, 049b40821h ; /* 16 */	
-
-
-
 
 	; runda 2
 	GG EAX, EBX, ECX, EDX, [ESI + 1 * DWORD_LENGTH], S21, 0f61e2562h ; /* 17 */
@@ -365,113 +332,18 @@ MD5Transform PROC uses EBX ECX , state:DWORD, block:DWORD
 	II ECX, EDX, EAX, EBX, [ESI + 2 * DWORD_LENGTH], S43, 02ad7d2bbh ; /* 63 */
 	II EBX, ECX, EDX, EAX, [ESI + 9 * DWORD_LENGTH], S44, 0eb86d391h ; /* 64 */
 	
-	; Zapamietanie wynikow w tablicy state
-	mov ESI, state
-	add [ESI], EAX
-	add [ESI + 1 * DWORD_LENGTH], EBX
-	add [ESI + 2 * DWORD_LENGTH], ECX
-	add [ESI + 3 * DWORD_LENGTH], EDX
+	; Zapamietanie wynikow w tablicy wskazywanej przez EDI (state)
+	pop EDI
+	add [EDI], EAX
+	add [EDI + 1 * DWORD_LENGTH], EBX
+	add [EDI + 2 * DWORD_LENGTH], ECX
+	add [EDI + 3 * DWORD_LENGTH], EDX
 	
-	; ewentualnie dopisac zerowanie jesli trzeba
-
 ret
 MD5Transform ENDP
-
 ;###########################################################
 ; koniec MD5Transform
 ;###########################################################
-
-
-
-;###########################################################
-; napisac co robi
-;unsigned char *output, UINT4 *input, unsigned int len
-;###########################################################
-
-Encode PROC output:DWORD, input:DWORD, len:DWORD
-
-ret
-Encode ENDP
-
-;###########################################################
-; koniec Encode
-;###########################################################
-
-
-
-
-
-
-;###########################################################
-; napisac co robi
-;UINT4 *output, unsigned char *input, unsigned int len
-;###########################################################
-Decode PROC output:DWORD, input:DWORD, len:DWORD
-
-ret
-Decode ENDP
-
-;###########################################################
-; koniec Dencode
-;###########################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-; do wywalenia 
-ReadTxtFile PROC path:DWORD, OutSize:DWORD
-LOCAL FileSize:DWORD
-	invoke CreateFileW,path, GENERIC_READ , 0, NULL,OPEN_EXISTING, FILE_ATTRIBUTE_ARCHIVE, NULL; otworz plik 
-	mov File,eax 
-	invoke GetFileSize, File, NULL; odczytaj jego wielkosc
-	mov ebx, OutSize; zwroc na zewnatrz wielkosc pliku
-	mov dword ptr [ebx], eax
-	mov FileSize, eax ; zapamietaj 
-	
-	invoke CreateFileMapping,File,NULL,PAGE_READONLY,0,0,NULL; zamapuj plik	
-	mov FileMap, eax 	
-	invoke MapViewOfFile,FileMap,FILE_MAP_READ,0,0,0; wczytaj go i udostepnij pamiec tylko do odczytu
-	mov Mem,eax	
-	ret 
-
-ReadTxtFile ENDP
-
-; do wywalenia 
-CloseMapFile PROC
-	; odmapuj plik, zwolnij uchwyty do zamapowanego pliku oraz pliku
-	invoke UnmapViewOfFile,Mem
-	mov Mem, 0
-    invoke CloseHandle,FileMap
-    mov    FileMap,0
-    invoke CloseHandle,File
-    mov File, 0
-    ret
-CloseMapFile endp 
-
 END DllEntry
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-; ta linijka zawiesza masma
 ; mov EBX, offset (MD5_CTX ptr [EBX]).state

@@ -3,9 +3,9 @@
 ;###########################################################
 
 ; ilosc bajtow wczytywanych na raz z dysku
-BUF_SIZE equ 1024
+BUF_SIZE equ 4*1024
 
-; Stale dla funkcji MD5Transform
+; Stale dla funkcji MD5Transform dotyczace rotacji w lewo
 S11 EQU 7
 S12 EQU 12
 S13 EQU 17
@@ -23,7 +23,7 @@ S42 EQU 10
 S43 EQU 15
 S44 EQU 21
 
-; wielkosc DWORD
+; ilosb bajtow typu DWORD (4B)
 DWORD_LENGTH EQU sizeof DWORD
 
 
@@ -31,7 +31,7 @@ DWORD_LENGTH EQU sizeof DWORD
 ; Deklaracje struktur
 ;###########################################################
 
-; kontekst MD5
+; kontekst MD5, ABCD - 16B obliczonej sumy MD5
 MD5_CTX STRUCT 4
 	state DWORD 4 dup (0) ; stan ABCD (wynik)
 	count DWORD 2 dup (0) ; ilosc bitow mod 2^64, najpierw lsb 
@@ -39,21 +39,16 @@ MD5_CTX STRUCT 4
 MD5_CTX ENDS
 
 
-
-
 ;###########################################################
-; Deklaracje prototypow funkcji
+; Deklaracje prototypow funkcji (opisy w pliku asm
 ;###########################################################
-; najwazniejsze
+; najwazniejsza
+CountMD5 PROTO :DWORD, :DWORD
+; pomocnicze
 MD5Init PROTO :DWORD
 MD5Update PROTO :DWORD, :DWORD, :DWORD
 MD5Final PROTO :DWORD, :DWORD
-CountMD5 PROTO :DWORD, :DWORD
-; pomocnicze
-
-MD5Transform PROTO :DWORD, :DWORD
-Encode PROTO :DWORD, :DWORD, :DWORD
-Decode PROTO :DWORD, :DWORD, :DWORD
+MD5Transform PROTO
 MD5_meset PROTO :DWORD, :BYTE,  :DWORD
 
 
@@ -61,16 +56,10 @@ MD5_meset PROTO :DWORD, :BYTE,  :DWORD
 ; Deklaracje zmiennych
 ;###########################################################
 
-
 .DATA 
 ; deklaracje MD5
 buffer DB BUF_SIZE dup (0)
-MD5digest DB 16 dup (0)
-PADDING BYTE 80h, 63 dup (0)
-
-
-
-
+PADDING BYTE 80h, 63 dup (0) ; wyrownywanie
 
 
 ;###########################################################
@@ -78,7 +67,7 @@ PADDING BYTE 80h, 63 dup (0)
 ;###########################################################
 
 ; podstawowe funckcje MD5
-; oblicza ((x) & (y)) | ((~x) & (z))
+; Funkcja F, oblicza ((x) & (y)) | ((~x) & (z))
 ; x = EAX, y = EBX, z = ECX, out = EDI, wynik do out
 F MACRO x, y, z, out
 	push y
@@ -90,7 +79,7 @@ F MACRO x, y, z, out
 	pop y
 ENDM
 
-; oblicza ((x) & (z)) | ((y) & (~z))
+; Funkcja G oblicza ((x) & (z)) | ((y) & (~z))
 ; czyli ((z) & (x) | ((~z) & (y))
 ; x = EAX, y = EBX, z = ECX, out = EDI, wynik do out
 G MACRO x, y, z, out
@@ -103,7 +92,7 @@ G MACRO x, y, z, out
 	pop x
 ENDM
 
-; oblicza (x) ^ (y) ^ (z)
+; Funkcja H, oblicza (x) ^ (y) ^ (z)
 ; x = EAX, y = EBX, z = ECX, out = EDI, wynik do out
 H MACRO x, y, z, out
 	mov out, x
@@ -111,7 +100,7 @@ H MACRO x, y, z, out
 	xor out, z
 ENDM
 
-; oblicza (y) ^ ((x) | (~z))
+; Funkcja I, oblicza (y) ^ ((x) | (~z))
 ; x = EAX, y = EBX, z = ECX, out = EDI, wynik do out
 I MACRO x, y, z, out
 	mov out, z
@@ -121,33 +110,24 @@ I MACRO x, y, z, out
 ENDM
 
 ; obraca x o n bitow w lewo
+; x i n - rozne rejestry, out - EDI
 ; wynik przez out zwracamy
 ROTATE_LEFT MACRO x, n, out
 	mov out, x
 	rol out, n
 ENDM
 
-; kopiowanie bajtow
-MD5_memcpy MACRO wyj, wej, dlug
-LOCAL petla ; lokalna etykieta
-	push EAX
-	push ECX
+
+; kopiowanie - podana ilosc bajtow musi byc podzielna przez 4
+; wej to ESI, wyj to EDI
+; kopiowanie bajtow doooooooooooooo analizy
+
+
+MD5_memcpy MACRO dlug
 	mov ECX, dlug
-petla:
-	; dodac kopiowanie calymi intami!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	; a takze zamienic to na LOOPa
-	mov ah, [wej]
-	mov [wyj], ah
-	inc wej
-	inc wyj
-	dec ECX
-	cmp ECX, 0
-	jne petla
-
-	pop ECX
-	pop EAX
+	cld					; inkrementacja rejestrow indeksowych
+	rep movsb
 ENDM
-
 
 
 ; transformacje
@@ -200,14 +180,3 @@ II MACRO a, b, c, d, x, s, ac
 	mov a, EDI
 	add a, b
 ENDM
-
-
-
-
-
-; do wywalenia
-File DWORD 0
-FileMap DWORD 0
-Mem DWORD 0
-BytesRead DWORD 0
-

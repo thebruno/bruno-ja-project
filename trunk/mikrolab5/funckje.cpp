@@ -195,8 +195,6 @@ int dodaj_element(TKontener * kont, TElement * elem){
 
 
 DWORD WINAPI LiczMd5( LPVOID lpParam ) {
-	// wywalic
-	char bytes[100];
 	DWORD wynik, wynik_obliczen;
 	while (1) {
 		wynik = WaitForSingleObject(Semafor,INFINITE);

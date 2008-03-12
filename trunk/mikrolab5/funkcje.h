@@ -7,7 +7,7 @@ struct TOpcje {
 };
 struct TElement;
 struct TKontener {
-	unsigned long int rozmiar;
+	unsigned long long int rozmiar;
 	unsigned int ilosc_elementow;
 	TKontener * nast;
 	TElement * glowa, *ogon;

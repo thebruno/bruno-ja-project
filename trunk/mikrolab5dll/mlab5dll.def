@@ -1,6 +1,5 @@
 LIBRARY mlab5dll
 EXPORTS
 CountMD5
-ReadTxtFile
-CloseMapFile
+
 
