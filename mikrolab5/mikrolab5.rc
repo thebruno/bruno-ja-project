@@ -42,10 +42,14 @@ IDC_MIKROLAB5 MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "Open",                        IDM_FILE_OPEN
-        MENUITEM "MD5",                         ID_FILE_MD5
-        MENUITEM "Raport",                      ID_FILE_RAPORT
+        MENUITEM "New search",                  IDM_FILE_OPEN
+        MENUITEM "Count MD5",                   ID_FILE_MD5
+        MENUITEM "Find duplicates",             ID_FILE_RAPORT
         MENUITEM "E&xit",                       IDM_EXIT
+    END
+    POPUP "Options"
+    BEGIN
+        MENUITEM "Folder list",                 ID_POMOC_FOLDERLIST
     END
     POPUP "&Help"
     BEGIN
@@ -71,14 +75,14 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG  22, 17, 230, 75
+IDD_ABOUTBOX DIALOGEX 22, 17, 230, 75
 STYLE DS_SETFONT | DS_MODALFRAME | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
-FONT 8, "System"
+FONT 8, "System", 0, 0, 0x0
 BEGIN
-    ICON            IDI_MIKROLAB5,IDC_MYICON,14,9,16,16
-    LTEXT           "mikrolab5 Version 1.0",IDC_STATIC,49,10,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2007",IDC_STATIC,49,20,119,8
+    ICON            IDI_MIKROLAB5,IDC_MYICON,14,9,20,20
+    LTEXT           "Projekt z JA. Autor Konrad Ba³ys ",IDC_STATIC,50,10,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) Konrad Ba³ys 2008",IDC_STATIC,49,20,119,8
     DEFPUSHBUTTON   "OK",IDOK,195,6,30,11,WS_GROUP
 END
 
@@ -118,7 +122,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_APP_TITLE           "mikrolab5"
+    IDS_APP_TITLE           "Duplicates finder. JA project. Author Konrad BA£YS"
     IDC_MIKROLAB5           "MIKROLAB5"
 END
 

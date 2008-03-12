@@ -57,9 +57,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Documents");
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"e:\\mp3");
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
+
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
 	wcscpy(WybraneOpcje.PodstawowaSciezka,L"l:");
+	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
 
 	wcscpy(WybraneOpcje.Raport, L"c:\\raport.txt");
 
@@ -202,7 +203,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		// otwieranie pliku
 		case IDM_FILE_OPEN:
-			// inicjalizacja struktury do otwierania pliku
+			/*// inicjalizacja struktury do otwierania pliku
 			OPENFILENAME opfn;
 			ZeroMemory(&opfn,sizeof(opfn));
 			opfn.lStructSize = sizeof(opfn);
@@ -236,7 +237,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// wyslanie do komponentu
 				SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)komunikat);
 				delete [] komunikat;
-			}
+			}*/
 			break;
 
 
@@ -247,6 +248,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		break;
 		case ID_FILE_MD5:
+			char MD5[16];
+			//CountMD5(L"c:\\asm51.zip",MD5);
 			/*TKontener *k;
 			TElement *e;
 			for (int j = 0; j < 500000; j++){
@@ -257,15 +260,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 */
 
+			//CountMD5(L"c:\\asm51\\film.avi",MD5);
 
 			kasuj_liste_kontenerow();
 			start(WybraneOpcje);
 			//znajdz();
 			
-			char MD5[16];
+			
 			int wynik;
 //			wynik = CountMD5(L"c:\\test.pdf", MD5);
-			int t1, t2, t3;
+
 			//t1 = clock();
 			//wynik = CountMD5("c:\\film.avi", MD5);
 			//t2 = clock();
@@ -299,8 +303,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
-		if (Mem!= 0)
-			CloseMapFile();
+		/*if (Mem!= 0)
+			CloseMapFile();*/
 		kasuj_liste_kontenerow();
 		PostQuitMessage(0);
 		break;
