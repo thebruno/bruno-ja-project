@@ -9,7 +9,7 @@ TElement *zadania [MAKSYMALNA_ILOSC_ZADAN];
 // nieobsluzonych jest (ilosc_zadan - nr_zadania) 
 int ilosc_zadan = 0, nr_zadania = 0, koniec = 0;
 
-// sciezka bez gwiazdki!!
+// sciezka bez gwiazdki na koncu!!
 int search (wchar_t* biezacykat, HANDLE hFile) {
 	WIN32_FIND_DATA finddata;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
