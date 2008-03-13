@@ -1,5 +1,6 @@
 LIBRARY mlab5dll
 EXPORTS
 CountMD5
+ThreadCountMD5
 
 

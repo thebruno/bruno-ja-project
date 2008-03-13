@@ -44,6 +44,8 @@ MD5_CTX ENDS
 ;###########################################################
 ; najwazniejsza
 CountMD5 PROTO :DWORD, :DWORD
+ThreadCountMD5 PROTO :DWORD, :DWORD, :DWORD
+ThreadCountMD5Body PROTO :DWORD
 ; pomocnicze
 MD5Init PROTO :DWORD
 MD5Update PROTO :DWORD, :DWORD, :DWORD
@@ -51,7 +53,7 @@ MD5Final PROTO :DWORD, :DWORD
 MD5Transform PROTO
 MD5_meset PROTO :DWORD, :BYTE,  :DWORD
 
-
+;dodaj_element PROTO C :DWORD, :DWORD
 ;###########################################################
 ; Deklaracje zmiennych
 ;###########################################################
@@ -60,6 +62,9 @@ MD5_meset PROTO :DWORD, :BYTE,  :DWORD
 ; deklaracje MD5
 buffer DB BUF_SIZE dup (0)
 PADDING BYTE 80h, 63 dup (0) ; wyrownywanie
+ThreadParam DWORD 3 dup (0)  ; 12 B adres sciezki, adres 16 tab
+; na MD5 oraz zwracany HANDLE do watku
+Tekst DB 'M','D',5,0
 
 
 ;###########################################################

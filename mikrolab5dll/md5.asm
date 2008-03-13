@@ -2,6 +2,7 @@
 .586
 .MODEL FLAT, STDCALL
 OPTION CASEMAP:NONE
+
 .NOLIST
 INCLUDE    include\windows.inc
 INCLUDE    include\user32.inc
@@ -44,7 +45,8 @@ CountMD5 PROC filename:DWORD, MD5:DWORD
 		mov EAX, 1
 		ret																			; nie udalo sie utworzyc pliku
 	.ENDIF
-	
+	;invoke dodaj_element, EAX, EBX
+
 	; udalo sie utworzyc plik
 	mov file, EAX										; file zawiera uchwyta na plik
 	invoke MD5Init, ADDR context						; inicjalizacja MD5
@@ -69,6 +71,50 @@ CountMD5 ENDP
 ; koniec CountMD5
 ;###########################################################
 
+
+ThreadCountMD5Body PROC uses EAX EBX, Param:DWORD
+	LOCAL filename:DWORD, MD5:DWORD
+	mov EBX, Param;
+	mov EAX, DWORD PTR [EBX];
+	mov filename, EAX
+	mov EAX, [EBX +4]
+	mov MD5, EAX
+	invoke CountMD5, filename, MD5
+	invoke MessageBoxA, NULL,MD5,ADDR Tekst,0
+	ret
+ThreadCountMD5Body ENDP
+
+
+;###########################################################
+; ThreadCountMD5 oblicza wartosc MD5 w watku
+; otwiera plik, odczytuje go i liczy MD5
+; przyjmuje wskaznik na sciezke (filename), typ wchar_t *
+; oraz wskaznik na przydzielona pamiec - 16 B dla wyniku
+; typu unsigned char *
+; zwraca 0 gdy OK, 1 gdy blad
+; modyfikuje tylko EAX
+;###########################################################
+ThreadCountMD5 PROC uses EAX EBX filename:DWORD, MD5:DWORD, thread:DWORD
+	lea EBX, ThreadParam
+	mov EAX, filename
+	mov [EBX], EAX
+	mov EAX, MD5
+	mov [EBX + 4], EAX
+	mov EAX, thread
+	mov [EBX + 8], EAX
+	mov EAX, ThreadCountMD5Body
+	
+	invoke CreateThread, NULL, NULL, EAX, ADDR ThreadParam, NORMAL_PRIORITY_CLASS, NULL
+	
+	mov EBX, thread ; zwroc HANDLE do watku
+	mov [EBX], EAX
+	;invoke WaitForSingleObject, EAX, INFINITE
+	
+	ret
+ThreadCountMD5 ENDP
+;###########################################################
+; koniec ThreadCountMD5
+;###########################################################
 
 
 ;###########################################################
