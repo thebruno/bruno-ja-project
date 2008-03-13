@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 23:29:08
 .\md5.asm						     Page 1 - 1
 
 
@@ -6,6 +6,7 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 				.586
 				.MODEL FLAT, STDCALL
 				OPTION CASEMAP:NONE
+
 				.NOLIST
 				.LIST
 				INCLUDELIB   lib\kernel32.lib
@@ -20,9 +21,9 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
  00000003  B8 00000001		    mov eax, TRUE
 				    ret
  0000000C			DllEntry ENDP
-.\md5.asm(22) : warning A6004: procedure argument or local not referenced : hInstDLL
-.\md5.asm(22) : warning A6004: procedure argument or local not referenced : reason
-.\md5.asm(22) : warning A6004: procedure argument or local not referenced : reserved1
+.\md5.asm(23) : warning A6004: procedure argument or local not referenced : hInstDLL
+.\md5.asm(23) : warning A6004: procedure argument or local not referenced : reason
+.\md5.asm(23) : warning A6004: procedure argument or local not referenced : reserved1
 
 
 
@@ -47,7 +48,8 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
  0000002E  B8 00000001				mov EAX, 1
 						ret																			; nie udalo sie utworzyc pliku
 					.ENDIF
-					
+					;invoke dodaj_element, EAX, EBX
+
 					; udalo sie utworzyc plik
  00000037  89 45 FC			mov file, EAX										; file zawiera uchwyta na plik
 					invoke MD5Init, ADDR context						; inicjalizacja MD5
@@ -73,6 +75,50 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 				;###########################################################
 
 
+ 00000097			ThreadCountMD5Body PROC uses EAX EBX, Param:DWORD
+					LOCAL filename:DWORD, MD5:DWORD
+ 0000009F  8B 5D 08			mov EBX, Param;
+ 000000A2  8B 03			mov EAX, DWORD PTR [EBX];
+ 000000A4  89 45 FC			mov filename, EAX
+ 000000A7  8B 43 04			mov EAX, [EBX +4]
+ 000000AA  89 45 F8			mov MD5, EAX
+					invoke CountMD5, filename, MD5
+					invoke MessageBoxA, NULL,MD5,ADDR Tekst,0
+					ret
+ 000000CF			ThreadCountMD5Body ENDP
+
+
+				;###########################################################
+				; ThreadCountMD5 oblicza wartosc MD5 w watku
+				; otwiera plik, odczytuje go i liczy MD5
+				; przyjmuje wskaznik na sciezke (filename), typ wchar_t *
+				; oraz wskaznik na przydzielona pamiec - 16 B dla wyniku
+				; typu unsigned char *
+				; zwraca 0 gdy OK, 1 gdy blad
+				; modyfikuje tylko EAX
+				;###########################################################
+ 000000CF			ThreadCountMD5 PROC uses EAX EBX filename:DWORD, MD5:DWORD, thread:DWORD
+ 000000D4  8D 1D 00001040 R		lea EBX, ThreadParam
+ 000000DA  8B 45 08			mov EAX, filename
+ 000000DD  89 03			mov [EBX], EAX
+ 000000DF  8B 45 0C			mov EAX, MD5
+ 000000E2  89 43 04			mov [EBX + 4], EAX
+ 000000E5  8B 45 10			mov EAX, thread
+ 000000E8  89 43 08			mov [EBX + 8], EAX
+ 000000EB  B8 00000097 R		mov EAX, ThreadCountMD5Body
+					
+					invoke CreateThread, NULL, NULL, EAX, ADDR ThreadParam, NORMAL_PRIORITY_CLASS, NULL
+					
+ 00000103  8B 5D 10			mov EBX, thread ; zwroc HANDLE do watku
+ 00000106  89 03			mov [EBX], EAX
+					;invoke WaitForSingleObject, EAX, INFINITE
+					
+					ret
+ 0000010E			ThreadCountMD5 ENDP
+				;###########################################################
+				; koniec ThreadCountMD5
+				;###########################################################
+
 
 				;###########################################################
 				; inicjalizacja MD5, nowy context
@@ -81,27 +127,27 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 				; dla stanu
 				; nic nie zwraca
 				;###########################################################
- 00000097			MD5Init PROC uses EBX, context:DWORD
- 0000009B  8B 5D 08			mov EBX, context					; EBX zawiera adres struktury MD5_CTX
+ 0000010E			MD5Init PROC uses EBX, context:DWORD
+ 00000112  8B 5D 08			mov EBX, context					; EBX zawiera adres struktury MD5_CTX
 
 					; zerowanie ilosci bitow, odwolanie do n-tego elementu struktury
 					; wskazywanej przez context
- 0000009E  C7 43 10			mov (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH], 0
+ 00000115  C7 43 10			mov (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH], 0
 	   00000000
- 000000A5  C7 43 14			mov (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH], 0
+ 0000011C  C7 43 14			mov (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH], 0
 	   00000000
 
 					; stan poczatkowy struktury MD5_CTX
- 000000AC  C7 03 67452301		mov (MD5_CTX ptr [EBX]).state[0*DWORD_LENGTH], 067452301h
- 000000B2  C7 43 04			mov (MD5_CTX ptr [EBX]).state[1*DWORD_LENGTH], 0efcdab89h
+ 00000123  C7 03 67452301		mov (MD5_CTX ptr [EBX]).state[0*DWORD_LENGTH], 067452301h
+ 00000129  C7 43 04			mov (MD5_CTX ptr [EBX]).state[1*DWORD_LENGTH], 0efcdab89h
 	   EFCDAB89
- 000000B9  C7 43 08			mov (MD5_CTX ptr [EBX]).state[2*DWORD_LENGTH], 098badcfeh
+ 00000130  C7 43 08			mov (MD5_CTX ptr [EBX]).state[2*DWORD_LENGTH], 098badcfeh
 	   98BADCFE
- 000000C0  C7 43 0C			mov (MD5_CTX ptr [EBX]).state[3*DWORD_LENGTH], 010325476h
+ 00000137  C7 43 0C			mov (MD5_CTX ptr [EBX]).state[3*DWORD_LENGTH], 010325476h
 	   10325476
 					
 					ret
- 000000CC			MD5Init ENDP
+ 00000143			MD5Init ENDP
 				;###########################################################
 				; koniec MD5Init 
 				;###########################################################
@@ -116,94 +162,94 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 				; unsigned int
 				; nic nie zwraca
 				;###########################################################
- 000000CC			MD5Update PROC uses EBX ECX EDX EDI ESI, context:DWORD, input:DWORD, inputLen:DWORD
+ 00000143			MD5Update PROC uses EBX ECX EDX EDI ESI, context:DWORD, input:DWORD, inputLen:DWORD
 					LOCAL index:DWORD, partLen:DWORD
- 000000D7  8B 5D 08			mov EBX, context					; EBX zawiera adres struktury MD5_CTX
+ 0000014E  8B 5D 08			mov EBX, context					; EBX zawiera adres struktury MD5_CTX
 
 					; oblicz ilosc bajtow modulo 64
- 000000DA  8B 43 10			mov EAX, (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH]
- 000000DD  C1 E8 03			shr EAX, 3
- 000000E0  83 E0 3F			and EAX, 03Fh
- 000000E3  89 45 FC			mov index, EAX
+ 00000151  8B 43 10			mov EAX, (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH]
+ 00000154  C1 E8 03			shr EAX, 3
+ 00000157  83 E0 3F			and EAX, 03Fh
+ 0000015A  89 45 FC			mov index, EAX
 
 					; sprawdzenie czy przebija 2^32, jednoczesnie odcina 3 najstarsze bity
- 000000E6  8B 45 10			mov EAX, inputLen 
- 000000E9  C1 E0 03			shl EAX, 3; dlugosc w bajtach, count w bitach (mnozymy przez 8)
+ 0000015D  8B 45 10			mov EAX, inputLen 
+ 00000160  C1 E0 03			shl EAX, 3; dlugosc w bajtach, count w bitach (mnozymy przez 8)
 					
- 000000EC  01 43 10			add (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH], EAX
+ 00000163  01 43 10			add (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH], EAX
 					
- 000000EF  39 43 10			cmp (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH], EAX		; czy przekroczylo zakres, nie da sie bezporrednio przez .IF
- 000000F2  73 03			jae @F
- 000000F4  FF 43 14				inc (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH]		; jesli przebilo to trzeba do starszej czesci count dodac 1
- 000000F7			@@:
+ 00000166  39 43 10			cmp (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH], EAX		; czy przekroczylo zakres, nie da sie bezporrednio przez .IF
+ 00000169  73 03			jae @F
+ 0000016B  FF 43 14				inc (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH]		; jesli przebilo to trzeba do starszej czesci count dodac 1
+ 0000016E			@@:
 
 					; zawsze dodajemy 3 najstarsze bity inputLen (bo liczba bitow wej jest 35 bitowa
 					; inputLen (32bity) przesuwamy o 3 w lewo
- 000000F7  8B 45 10			mov EAX, inputLen ; modyfikowalismy wczesniej, wiec ponownie wczytujemy
- 000000FA  C1 E8 1D			shr EAX, 29
- 000000FD  01 43 14			add (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH], EAX
+ 0000016E  8B 45 10			mov EAX, inputLen ; modyfikowalismy wczesniej, wiec ponownie wczytujemy
+ 00000171  C1 E8 1D			shr EAX, 29
+ 00000174  01 43 14			add (MD5_CTX ptr [EBX]).count[1*DWORD_LENGTH], EAX
 					
 					; pozycja w buforze 64 bajtowym
- 00000100  B8 00000040			mov EAX, 64
- 00000105  2B 45 FC			sub EAX, index
- 00000108  89 45 F8			mov partLen,EAX
+ 00000177  B8 00000040			mov EAX, 64
+ 0000017C  2B 45 FC			sub EAX, index
+ 0000017F  89 45 F8			mov partLen,EAX
 					
 					.IF inputLen >= EAX					; EAX == partLen
 						; adres wyjscia, odwolanie do elementu o numerze index (bajty)
- 00000110  8D 7B 18				lea EDI, (MD5_CTX ptr [EBX]).buffer 
- 00000113  03 7D FC				add EDI, index
- 00000116  8B 75 0C				mov ESI, input						; adres wejscia, input jest juz wskaznikiem
+ 00000187  8D 7B 18				lea EDI, (MD5_CTX ptr [EBX]).buffer 
+ 0000018A  03 7D FC				add EDI, index
+ 0000018D  8B 75 0C				mov ESI, input						; adres wejscia, input jest juz wskaznikiem
 						MD5_memcpy partLen			; kopiuj - jest to makro, nie funkcja
- 00000119  8B 4D F8	     1		mov ECX, partLen
- 0000011C  FC		     1		cld					; inkrementacja rejestrow indeksowych
- 0000011D  F3/ A4	     1		rep movsb
+ 00000190  8B 4D F8	     1		mov ECX, partLen
+ 00000193  FC		     1		cld					; inkrementacja rejestrow indeksowych
+ 00000194  F3/ A4	     1		rep movsb
 							
- 0000011F  8D 3B				lea EDI, (MD5_CTX ptr [EBX]).state
- 00000121  8D 73 18				lea ESI, (MD5_CTX ptr [EBX]).buffer
+ 00000196  8D 3B				lea EDI, (MD5_CTX ptr [EBX]).state
+ 00000198  8D 73 18				lea ESI, (MD5_CTX ptr [EBX]).buffer
 						invoke MD5Transform 
- 00000129  8B 4D F8				mov ECX, partLen	
- 0000012C				petla:
- 0000012C  8B C1				mov EAX, ECX		
- 0000012E  83 C0 3F				add EAX, 63
+ 000001A0  8B 4D F8				mov ECX, partLen	
+ 000001A3				petla:
+ 000001A3  8B C1				mov EAX, ECX		
+ 000001A5  83 C0 3F				add EAX, 63
 						.IF EAX >= inputLen
- 00000136  EB 12					jmp koniec_petli
+ 000001AD  EB 12					jmp koniec_petli
 						.ENDIF
 						
- 00000138  8B 45 0C				mov EAX, input						; input to adres, dlatego trzeba sie przez rejestr odwolywac
+ 000001AF  8B 45 0C				mov EAX, input						; input to adres, dlatego trzeba sie przez rejestr odwolywac
 						
- 0000013B  8D 3B				lea EDI, (MD5_CTX ptr [EBX]).state
- 0000013D  8D 34 01				lea ESI, [EAX][ECX] 
+ 000001B2  8D 3B				lea EDI, (MD5_CTX ptr [EBX]).state
+ 000001B4  8D 34 01				lea ESI, [EAX][ECX] 
 						invoke MD5Transform 		
 
- 00000145  83 C1 40				add ECX, 64
- 00000148  EB E2				jmp petla
+ 000001BC  83 C1 40				add ECX, 64
+ 000001BF  EB E2				jmp petla
 						
- 0000014A			koniec_petli:		
- 0000014A  C7 45 FC				mov index, 0
+ 000001C1			koniec_petli:		
+ 000001C1  C7 45 FC				mov index, 0
 	   00000000
 							
 					.ELSEIF
- 00000153  B9 00000000				mov ECX, 0
+ 000001CA  B9 00000000				mov ECX, 0
 					.ENDIF
 
- 00000158  29 4D 10			sub inputLen, ECX						; == inputLen - i
+ 000001CF  29 4D 10			sub inputLen, ECX						; == inputLen - i
 					
 					.IF inputLen == 0						; moja modyfikacja - jesli nie ma co kopiowac to nic nie rob
 						ret
 					.ENDIF
 					
 					; kopiuj input - ECX elementow
- 0000016A  8D 7B 18			lea edi, (MD5_CTX ptr [EBX]).buffer		; adres bufora
- 0000016D  03 7D FC			add EDI, index							; element z buforu o numerze index
- 00000170  8B 75 0C			mov ESI, input							; kolejny bajt z wejscia
- 00000173  03 F1			add ESI, ECX
+ 000001E1  8D 7B 18			lea edi, (MD5_CTX ptr [EBX]).buffer		; adres bufora
+ 000001E4  03 7D FC			add EDI, index							; element z buforu o numerze index
+ 000001E7  8B 75 0C			mov ESI, input							; kolejny bajt z wejscia
+ 000001EA  03 F1			add ESI, ECX
 					
 					MD5_memcpy inputLen			; bez " - i"
- 00000175  8B 4D 10	     1		mov ECX, inputLen
- 00000178  FC		     1		cld					; inkrementacja rejestrow indeksowych
- 00000179  F3/ A4	     1		rep movsb
+ 000001EC  8B 4D 10	     1		mov ECX, inputLen
+ 000001EF  FC		     1		cld					; inkrementacja rejestrow indeksowych
+ 000001F0  F3/ A4	     1		rep movsb
 					ret
- 00000184			MD5Update ENDP
+ 000001FB			MD5Update ENDP
 				;###########################################################
 				; koniec MD5Update
 				;###########################################################
@@ -217,30 +263,30 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 				; nic nie zwraca
 				; przez digest zwraca obliczone MD5
 				;###########################################################
- 00000184			MD5Final PROC uses EAX EBX ESI EDI, digest:DWORD, context:DWORD
+ 000001FB			MD5Final PROC uses EAX EBX ESI EDI, digest:DWORD, context:DWORD
 				LOCAL index:DWORD, padLen:DWORD, bits[8]:DWORD
- 0000018E  8B 5D 0C			mov EBX, context									; zamieniamy bity na bajty
- 00000191  8B 43 10			mov EAX, (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH]
- 00000194  C1 E8 03			shr EAX, 3
- 00000197  83 E0 3F			and EAX, 03fh
+ 00000205  8B 5D 0C			mov EBX, context									; zamieniamy bity na bajty
+ 00000208  8B 43 10			mov EAX, (MD5_CTX ptr [EBX]).count[0*DWORD_LENGTH]
+ 0000020B  C1 E8 03			shr EAX, 3
+ 0000020E  83 E0 3F			and EAX, 03fh
 
 					; zapamietaj aktualna ilosc bitow zamiast encode
- 0000019A  8D 73 10			lea ESI, (MD5_CTX ptr [EBX]).count				; polozenie MD5 (zrodlo)
- 0000019D  8D 7D D8			lea EDI, bits									; polozenie MD5 (cel)
+ 00000211  8D 73 10			lea ESI, (MD5_CTX ptr [EBX]).count				; polozenie MD5 (zrodlo)
+ 00000214  8D 7D D8			lea EDI, bits									; polozenie MD5 (cel)
 					MD5_memcpy 8				
- 000001A0  B9 00000008	     1		mov ECX, 8
- 000001A5  FC		     1		cld					; inkrementacja rejestrow indeksowych
- 000001A6  F3/ A4	     1		rep movsb
+ 00000217  B9 00000008	     1		mov ECX, 8
+ 0000021C  FC		     1		cld					; inkrementacja rejestrow indeksowych
+ 0000021D  F3/ A4	     1		rep movsb
 					
 					.IF EAX < 56				; EAX to jest index
- 000001AD  C7 45 F8				mov padLen, 56
+ 00000224  C7 45 F8				mov padLen, 56
 	   00000038
 					.ELSE
- 000001B6  C7 45 F8				mov padLen, 120
+ 0000022D  C7 45 F8				mov padLen, 120
 	   00000078
 					.ENDIF
- 000001BD  89 45 FC			mov index, EAX
- 000001C0  29 45 F8			sub padLen, EAX				; od 56 albo 120 odejmujemy index (jest w EAX)
+ 00000234  89 45 FC			mov index, EAX
+ 00000237  29 45 F8			sub padLen, EAX				; od 56 albo 120 odejmujemy index (jest w EAX)
 					
 					; dopelnianie do 56 bajtow mod 64
 					invoke MD5Update, context, ADDR PADDING, padLen
@@ -249,16 +295,16 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 					invoke MD5Update, context, ADDR bits, 8
 					
 					; zamiast encode jest zwykle kopiowanie
- 000001E1  8D 33			lea ESI, (MD5_CTX ptr [EBX]).state				; polozenie MD5 (zrodlo)
- 000001E3  8B 7D 08			mov EDI, digest									; polozenie MD5 (cel)
+ 00000258  8D 33			lea ESI, (MD5_CTX ptr [EBX]).state				; polozenie MD5 (zrodlo)
+ 0000025A  8B 7D 08			mov EDI, digest									; polozenie MD5 (cel)
 					MD5_memcpy 16							; kopiuj 16 B
- 000001E6  B9 00000010	     1		mov ECX, 16
- 000001EB  FC		     1		cld					; inkrementacja rejestrow indeksowych
- 000001EC  F3/ A4	     1		rep movsb
+ 0000025D  B9 00000010	     1		mov ECX, 16
+ 00000262  FC		     1		cld					; inkrementacja rejestrow indeksowych
+ 00000263  F3/ A4	     1		rep movsb
 					
 					;; dopisac MD5_memset
 				ret
- 000001F6			MD5Final ENDP
+ 0000026D			MD5Final ENDP
 				;###########################################################
 				; koniec MD5Final
 				;###########################################################
@@ -274,887 +320,887 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
 				; modyfikuje EAX, EBX, ECX, EDX
 				; ale trzeba zapamietac tylko EBX, ECX
 				;###########################################################
- 000001F6			MD5Transform PROC uses EBX ECX
+ 0000026D			MD5Transform PROC uses EBX ECX
 					; zmienne a,b,c,d zast¹pione przez rejestry
 					; inicjalizacja 4 czesci MD5 (a,b,c,d) z tablicy wskazywanej przez EDI (state)
- 000001F8  8B 07			mov EAX, [EDI]
- 000001FA  8B 5F 04			mov EBX, [EDI + 1 * DWORD_LENGTH]
- 000001FD  8B 4F 08			mov ECX, [EDI + 2 * DWORD_LENGTH]
- 00000200  8B 57 0C			mov EDX, [EDI + 3 * DWORD_LENGTH]
+ 0000026F  8B 07			mov EAX, [EDI]
+ 00000271  8B 5F 04			mov EBX, [EDI + 1 * DWORD_LENGTH]
+ 00000274  8B 4F 08			mov ECX, [EDI + 2 * DWORD_LENGTH]
+ 00000277  8B 57 0C			mov EDX, [EDI + 3 * DWORD_LENGTH]
 
- 00000203  57				push EDI ; bo wszystkie funkcje go modyfikuja 
+ 0000027A  57				push EDI ; bo wszystkie funkcje go modyfikuja 
 					; runda 1
 					FF EAX, EBX, ECX, EDX, [ESI + 0 * DWORD_LENGTH], S11, 0d76aa478h ; /* 1 */
- 00000204  51		     2		push ECX
- 00000205  8B FB	     2		mov EDI, EBX
- 00000207  23 CB	     2		and ECX, EBX
- 00000209  F7 D7	     2		not EDI
- 0000020B  23 FA	     2		and EDI, EDX
- 0000020D  0B F9	     2		or EDI, ECX
- 0000020F  59		     2		pop ECX
- 00000210  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
- 00000212  81 C7 D76AA478    1		add EDI, 0d76aa478h
- 00000218  03 C7	     1		add EAX, EDI
- 0000021A  8B F8	     2		mov EDI, EAX
- 0000021C  C1 C7 07	     2		rol EDI, S11
- 0000021F  8B C7	     1		mov EAX, EDI
- 00000221  03 C3	     1		add EAX, EBX
+ 0000027B  51		     2		push ECX
+ 0000027C  8B FB	     2		mov EDI, EBX
+ 0000027E  23 CB	     2		and ECX, EBX
+ 00000280  F7 D7	     2		not EDI
+ 00000282  23 FA	     2		and EDI, EDX
+ 00000284  0B F9	     2		or EDI, ECX
+ 00000286  59		     2		pop ECX
+ 00000287  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
+ 00000289  81 C7 D76AA478    1		add EDI, 0d76aa478h
+ 0000028F  03 C7	     1		add EAX, EDI
+ 00000291  8B F8	     2		mov EDI, EAX
+ 00000293  C1 C7 07	     2		rol EDI, S11
+ 00000296  8B C7	     1		mov EAX, EDI
+ 00000298  03 C3	     1		add EAX, EBX
 					FF EDX, EAX, EBX, ECX, [ESI + 1 * DWORD_LENGTH], S12, 0e8c7b756h ; /* 2 */
- 00000223  53		     2		push EBX
- 00000224  8B F8	     2		mov EDI, EAX
- 00000226  23 D8	     2		and EBX, EAX
- 00000228  F7 D7	     2		not EDI
- 0000022A  23 F9	     2		and EDI, ECX
- 0000022C  0B FB	     2		or EDI, EBX
- 0000022E  5B		     2		pop EBX
- 0000022F  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
- 00000232  81 C7 E8C7B756    1		add EDI, 0e8c7b756h
- 00000238  03 D7	     1		add EDX, EDI
- 0000023A  8B FA	     2		mov EDI, EDX
- 0000023C  C1 C7 0C	     2		rol EDI, S12
- 0000023F  8B D7	     1		mov EDX, EDI
- 00000241  03 D0	     1		add EDX, EAX
+ 0000029A  53		     2		push EBX
+ 0000029B  8B F8	     2		mov EDI, EAX
+ 0000029D  23 D8	     2		and EBX, EAX
+ 0000029F  F7 D7	     2		not EDI
+ 000002A1  23 F9	     2		and EDI, ECX
+ 000002A3  0B FB	     2		or EDI, EBX
+ 000002A5  5B		     2		pop EBX
+ 000002A6  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
+ 000002A9  81 C7 E8C7B756    1		add EDI, 0e8c7b756h
+ 000002AF  03 D7	     1		add EDX, EDI
+ 000002B1  8B FA	     2		mov EDI, EDX
+ 000002B3  C1 C7 0C	     2		rol EDI, S12
+ 000002B6  8B D7	     1		mov EDX, EDI
+ 000002B8  03 D0	     1		add EDX, EAX
 					FF ECX, EDX, EAX, EBX, [ESI + 2 * DWORD_LENGTH], S13, 0242070dbh ; /* 3 */
- 00000243  50		     2		push EAX
- 00000244  8B FA	     2		mov EDI, EDX
- 00000246  23 C2	     2		and EAX, EDX
- 00000248  F7 D7	     2		not EDI
- 0000024A  23 FB	     2		and EDI, EBX
- 0000024C  0B F8	     2		or EDI, EAX
- 0000024E  58		     2		pop EAX
- 0000024F  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
- 00000252  81 C7 242070DB    1		add EDI, 0242070dbh
- 00000258  03 CF	     1		add ECX, EDI
- 0000025A  8B F9	     2		mov EDI, ECX
- 0000025C  C1 C7 11	     2		rol EDI, S13
- 0000025F  8B CF	     1		mov ECX, EDI
- 00000261  03 CA	     1		add ECX, EDX
+ 000002BA  50		     2		push EAX
+ 000002BB  8B FA	     2		mov EDI, EDX
+ 000002BD  23 C2	     2		and EAX, EDX
+ 000002BF  F7 D7	     2		not EDI
+ 000002C1  23 FB	     2		and EDI, EBX
+ 000002C3  0B F8	     2		or EDI, EAX
+ 000002C5  58		     2		pop EAX
+ 000002C6  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
+ 000002C9  81 C7 242070DB    1		add EDI, 0242070dbh
+ 000002CF  03 CF	     1		add ECX, EDI
+ 000002D1  8B F9	     2		mov EDI, ECX
+ 000002D3  C1 C7 11	     2		rol EDI, S13
+ 000002D6  8B CF	     1		mov ECX, EDI
+ 000002D8  03 CA	     1		add ECX, EDX
 					FF EBX, ECX, EDX, EAX, [ESI + 3 * DWORD_LENGTH], S14, 0c1bdceeeh ; /* 4 */
- 00000263  52		     2		push EDX
- 00000264  8B F9	     2		mov EDI, ECX
- 00000266  23 D1	     2		and EDX, ECX
- 00000268  F7 D7	     2		not EDI
- 0000026A  23 F8	     2		and EDI, EAX
- 0000026C  0B FA	     2		or EDI, EDX
- 0000026E  5A		     2		pop EDX
- 0000026F  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
- 00000272  81 C7 C1BDCEEE    1		add EDI, 0c1bdceeeh
- 00000278  03 DF	     1		add EBX, EDI
- 0000027A  8B FB	     2		mov EDI, EBX
- 0000027C  C1 C7 16	     2		rol EDI, S14
- 0000027F  8B DF	     1		mov EBX, EDI
- 00000281  03 D9	     1		add EBX, ECX
+ 000002DA  52		     2		push EDX
+ 000002DB  8B F9	     2		mov EDI, ECX
+ 000002DD  23 D1	     2		and EDX, ECX
+ 000002DF  F7 D7	     2		not EDI
+ 000002E1  23 F8	     2		and EDI, EAX
+ 000002E3  0B FA	     2		or EDI, EDX
+ 000002E5  5A		     2		pop EDX
+ 000002E6  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
+ 000002E9  81 C7 C1BDCEEE    1		add EDI, 0c1bdceeeh
+ 000002EF  03 DF	     1		add EBX, EDI
+ 000002F1  8B FB	     2		mov EDI, EBX
+ 000002F3  C1 C7 16	     2		rol EDI, S14
+ 000002F6  8B DF	     1		mov EBX, EDI
+ 000002F8  03 D9	     1		add EBX, ECX
 					FF EAX, EBX, ECX, EDX, [ESI + 4 * DWORD_LENGTH], S11, 0f57c0fafh ; /* 5 */
- 00000283  51		     2		push ECX
- 00000284  8B FB	     2		mov EDI, EBX
- 00000286  23 CB	     2		and ECX, EBX
- 00000288  F7 D7	     2		not EDI
- 0000028A  23 FA	     2		and EDI, EDX
- 0000028C  0B F9	     2		or EDI, ECX
- 0000028E  59		     2		pop ECX
- 0000028F  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
- 00000292  81 C7 F57C0FAF    1		add EDI, 0f57c0fafh
- 00000298  03 C7	     1		add EAX, EDI
- 0000029A  8B F8	     2		mov EDI, EAX
- 0000029C  C1 C7 07	     2		rol EDI, S11
- 0000029F  8B C7	     1		mov EAX, EDI
- 000002A1  03 C3	     1		add EAX, EBX
+ 000002FA  51		     2		push ECX
+ 000002FB  8B FB	     2		mov EDI, EBX
+ 000002FD  23 CB	     2		and ECX, EBX
+ 000002FF  F7 D7	     2		not EDI
+ 00000301  23 FA	     2		and EDI, EDX
+ 00000303  0B F9	     2		or EDI, ECX
+ 00000305  59		     2		pop ECX
+ 00000306  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
+ 00000309  81 C7 F57C0FAF    1		add EDI, 0f57c0fafh
+ 0000030F  03 C7	     1		add EAX, EDI
+ 00000311  8B F8	     2		mov EDI, EAX
+ 00000313  C1 C7 07	     2		rol EDI, S11
+ 00000316  8B C7	     1		mov EAX, EDI
+ 00000318  03 C3	     1		add EAX, EBX
 					FF EDX, EAX, EBX, ECX, [ESI + 5 * DWORD_LENGTH], S12, 04787c62ah ; /* 6 */
- 000002A3  53		     2		push EBX
- 000002A4  8B F8	     2		mov EDI, EAX
- 000002A6  23 D8	     2		and EBX, EAX
- 000002A8  F7 D7	     2		not EDI
- 000002AA  23 F9	     2		and EDI, ECX
- 000002AC  0B FB	     2		or EDI, EBX
- 000002AE  5B		     2		pop EBX
- 000002AF  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
- 000002B2  81 C7 4787C62A    1		add EDI, 04787c62ah
- 000002B8  03 D7	     1		add EDX, EDI
- 000002BA  8B FA	     2		mov EDI, EDX
- 000002BC  C1 C7 0C	     2		rol EDI, S12
- 000002BF  8B D7	     1		mov EDX, EDI
- 000002C1  03 D0	     1		add EDX, EAX
+ 0000031A  53		     2		push EBX
+ 0000031B  8B F8	     2		mov EDI, EAX
+ 0000031D  23 D8	     2		and EBX, EAX
+ 0000031F  F7 D7	     2		not EDI
+ 00000321  23 F9	     2		and EDI, ECX
+ 00000323  0B FB	     2		or EDI, EBX
+ 00000325  5B		     2		pop EBX
+ 00000326  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
+ 00000329  81 C7 4787C62A    1		add EDI, 04787c62ah
+ 0000032F  03 D7	     1		add EDX, EDI
+ 00000331  8B FA	     2		mov EDI, EDX
+ 00000333  C1 C7 0C	     2		rol EDI, S12
+ 00000336  8B D7	     1		mov EDX, EDI
+ 00000338  03 D0	     1		add EDX, EAX
 					FF ECX, EDX, EAX, EBX, [ESI + 6 * DWORD_LENGTH], S13, 0a8304613h ; /* 7 */
- 000002C3  50		     2		push EAX
- 000002C4  8B FA	     2		mov EDI, EDX
- 000002C6  23 C2	     2		and EAX, EDX
- 000002C8  F7 D7	     2		not EDI
- 000002CA  23 FB	     2		and EDI, EBX
- 000002CC  0B F8	     2		or EDI, EAX
- 000002CE  58		     2		pop EAX
- 000002CF  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
- 000002D2  81 C7 A8304613    1		add EDI, 0a8304613h
- 000002D8  03 CF	     1		add ECX, EDI
- 000002DA  8B F9	     2		mov EDI, ECX
- 000002DC  C1 C7 11	     2		rol EDI, S13
- 000002DF  8B CF	     1		mov ECX, EDI
- 000002E1  03 CA	     1		add ECX, EDX
+ 0000033A  50		     2		push EAX
+ 0000033B  8B FA	     2		mov EDI, EDX
+ 0000033D  23 C2	     2		and EAX, EDX
+ 0000033F  F7 D7	     2		not EDI
+ 00000341  23 FB	     2		and EDI, EBX
+ 00000343  0B F8	     2		or EDI, EAX
+ 00000345  58		     2		pop EAX
+ 00000346  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
+ 00000349  81 C7 A8304613    1		add EDI, 0a8304613h
+ 0000034F  03 CF	     1		add ECX, EDI
+ 00000351  8B F9	     2		mov EDI, ECX
+ 00000353  C1 C7 11	     2		rol EDI, S13
+ 00000356  8B CF	     1		mov ECX, EDI
+ 00000358  03 CA	     1		add ECX, EDX
 					FF EBX, ECX, EDX, EAX, [ESI + 7 * DWORD_LENGTH], S14, 0fd469501h ; /* 8 */
- 000002E3  52		     2		push EDX
- 000002E4  8B F9	     2		mov EDI, ECX
- 000002E6  23 D1	     2		and EDX, ECX
- 000002E8  F7 D7	     2		not EDI
- 000002EA  23 F8	     2		and EDI, EAX
- 000002EC  0B FA	     2		or EDI, EDX
- 000002EE  5A		     2		pop EDX
- 000002EF  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
- 000002F2  81 C7 FD469501    1		add EDI, 0fd469501h
- 000002F8  03 DF	     1		add EBX, EDI
- 000002FA  8B FB	     2		mov EDI, EBX
- 000002FC  C1 C7 16	     2		rol EDI, S14
- 000002FF  8B DF	     1		mov EBX, EDI
- 00000301  03 D9	     1		add EBX, ECX
+ 0000035A  52		     2		push EDX
+ 0000035B  8B F9	     2		mov EDI, ECX
+ 0000035D  23 D1	     2		and EDX, ECX
+ 0000035F  F7 D7	     2		not EDI
+ 00000361  23 F8	     2		and EDI, EAX
+ 00000363  0B FA	     2		or EDI, EDX
+ 00000365  5A		     2		pop EDX
+ 00000366  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
+ 00000369  81 C7 FD469501    1		add EDI, 0fd469501h
+ 0000036F  03 DF	     1		add EBX, EDI
+ 00000371  8B FB	     2		mov EDI, EBX
+ 00000373  C1 C7 16	     2		rol EDI, S14
+ 00000376  8B DF	     1		mov EBX, EDI
+ 00000378  03 D9	     1		add EBX, ECX
 					FF EAX, EBX, ECX, EDX, [ESI + 8 * DWORD_LENGTH], S11, 0698098d8h ; /* 9 */
- 00000303  51		     2		push ECX
- 00000304  8B FB	     2		mov EDI, EBX
- 00000306  23 CB	     2		and ECX, EBX
- 00000308  F7 D7	     2		not EDI
- 0000030A  23 FA	     2		and EDI, EDX
- 0000030C  0B F9	     2		or EDI, ECX
- 0000030E  59		     2		pop ECX
- 0000030F  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
- 00000312  81 C7 698098D8    1		add EDI, 0698098d8h
- 00000318  03 C7	     1		add EAX, EDI
- 0000031A  8B F8	     2		mov EDI, EAX
- 0000031C  C1 C7 07	     2		rol EDI, S11
- 0000031F  8B C7	     1		mov EAX, EDI
- 00000321  03 C3	     1		add EAX, EBX
+ 0000037A  51		     2		push ECX
+ 0000037B  8B FB	     2		mov EDI, EBX
+ 0000037D  23 CB	     2		and ECX, EBX
+ 0000037F  F7 D7	     2		not EDI
+ 00000381  23 FA	     2		and EDI, EDX
+ 00000383  0B F9	     2		or EDI, ECX
+ 00000385  59		     2		pop ECX
+ 00000386  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
+ 00000389  81 C7 698098D8    1		add EDI, 0698098d8h
+ 0000038F  03 C7	     1		add EAX, EDI
+ 00000391  8B F8	     2		mov EDI, EAX
+ 00000393  C1 C7 07	     2		rol EDI, S11
+ 00000396  8B C7	     1		mov EAX, EDI
+ 00000398  03 C3	     1		add EAX, EBX
 					FF EDX, EAX, EBX, ECX, [ESI + 9 * DWORD_LENGTH], S12, 08b44f7afh ; /* 10 */
- 00000323  53		     2		push EBX
- 00000324  8B F8	     2		mov EDI, EAX
- 00000326  23 D8	     2		and EBX, EAX
- 00000328  F7 D7	     2		not EDI
- 0000032A  23 F9	     2		and EDI, ECX
- 0000032C  0B FB	     2		or EDI, EBX
- 0000032E  5B		     2		pop EBX
- 0000032F  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
- 00000332  81 C7 8B44F7AF    1		add EDI, 08b44f7afh
- 00000338  03 D7	     1		add EDX, EDI
- 0000033A  8B FA	     2		mov EDI, EDX
- 0000033C  C1 C7 0C	     2		rol EDI, S12
- 0000033F  8B D7	     1		mov EDX, EDI
- 00000341  03 D0	     1		add EDX, EAX
+ 0000039A  53		     2		push EBX
+ 0000039B  8B F8	     2		mov EDI, EAX
+ 0000039D  23 D8	     2		and EBX, EAX
+ 0000039F  F7 D7	     2		not EDI
+ 000003A1  23 F9	     2		and EDI, ECX
+ 000003A3  0B FB	     2		or EDI, EBX
+ 000003A5  5B		     2		pop EBX
+ 000003A6  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
+ 000003A9  81 C7 8B44F7AF    1		add EDI, 08b44f7afh
+ 000003AF  03 D7	     1		add EDX, EDI
+ 000003B1  8B FA	     2		mov EDI, EDX
+ 000003B3  C1 C7 0C	     2		rol EDI, S12
+ 000003B6  8B D7	     1		mov EDX, EDI
+ 000003B8  03 D0	     1		add EDX, EAX
 					FF ECX, EDX, EAX, EBX, [ESI +10 * DWORD_LENGTH], S13, 0ffff5bb1h ; /* 11 */
- 00000343  50		     2		push EAX
- 00000344  8B FA	     2		mov EDI, EDX
- 00000346  23 C2	     2		and EAX, EDX
- 00000348  F7 D7	     2		not EDI
- 0000034A  23 FB	     2		and EDI, EBX
- 0000034C  0B F8	     2		or EDI, EAX
- 0000034E  58		     2		pop EAX
- 0000034F  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
- 00000352  81 C7 FFFF5BB1    1		add EDI, 0ffff5bb1h
- 00000358  03 CF	     1		add ECX, EDI
- 0000035A  8B F9	     2		mov EDI, ECX
- 0000035C  C1 C7 11	     2		rol EDI, S13
- 0000035F  8B CF	     1		mov ECX, EDI
- 00000361  03 CA	     1		add ECX, EDX
+ 000003BA  50		     2		push EAX
+ 000003BB  8B FA	     2		mov EDI, EDX
+ 000003BD  23 C2	     2		and EAX, EDX
+ 000003BF  F7 D7	     2		not EDI
+ 000003C1  23 FB	     2		and EDI, EBX
+ 000003C3  0B F8	     2		or EDI, EAX
+ 000003C5  58		     2		pop EAX
+ 000003C6  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
+ 000003C9  81 C7 FFFF5BB1    1		add EDI, 0ffff5bb1h
+ 000003CF  03 CF	     1		add ECX, EDI
+ 000003D1  8B F9	     2		mov EDI, ECX
+ 000003D3  C1 C7 11	     2		rol EDI, S13
+ 000003D6  8B CF	     1		mov ECX, EDI
+ 000003D8  03 CA	     1		add ECX, EDX
 					FF EBX, ECX, EDX, EAX, [ESI +11 * DWORD_LENGTH], S14, 0895cd7beh ; /* 12 */
- 00000363  52		     2		push EDX
- 00000364  8B F9	     2		mov EDI, ECX
- 00000366  23 D1	     2		and EDX, ECX
- 00000368  F7 D7	     2		not EDI
- 0000036A  23 F8	     2		and EDI, EAX
- 0000036C  0B FA	     2		or EDI, EDX
- 0000036E  5A		     2		pop EDX
- 0000036F  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
- 00000372  81 C7 895CD7BE    1		add EDI, 0895cd7beh
- 00000378  03 DF	     1		add EBX, EDI
- 0000037A  8B FB	     2		mov EDI, EBX
- 0000037C  C1 C7 16	     2		rol EDI, S14
- 0000037F  8B DF	     1		mov EBX, EDI
- 00000381  03 D9	     1		add EBX, ECX
+ 000003DA  52		     2		push EDX
+ 000003DB  8B F9	     2		mov EDI, ECX
+ 000003DD  23 D1	     2		and EDX, ECX
+ 000003DF  F7 D7	     2		not EDI
+ 000003E1  23 F8	     2		and EDI, EAX
+ 000003E3  0B FA	     2		or EDI, EDX
+ 000003E5  5A		     2		pop EDX
+ 000003E6  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
+ 000003E9  81 C7 895CD7BE    1		add EDI, 0895cd7beh
+ 000003EF  03 DF	     1		add EBX, EDI
+ 000003F1  8B FB	     2		mov EDI, EBX
+ 000003F3  C1 C7 16	     2		rol EDI, S14
+ 000003F6  8B DF	     1		mov EBX, EDI
+ 000003F8  03 D9	     1		add EBX, ECX
 					FF EAX, EBX, ECX, EDX, [ESI +12 * DWORD_LENGTH], S11, 06b901122h ; /* 13 */
- 00000383  51		     2		push ECX
- 00000384  8B FB	     2		mov EDI, EBX
- 00000386  23 CB	     2		and ECX, EBX
- 00000388  F7 D7	     2		not EDI
- 0000038A  23 FA	     2		and EDI, EDX
- 0000038C  0B F9	     2		or EDI, ECX
- 0000038E  59		     2		pop ECX
- 0000038F  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
- 00000392  81 C7 6B901122    1		add EDI, 06b901122h
- 00000398  03 C7	     1		add EAX, EDI
- 0000039A  8B F8	     2		mov EDI, EAX
- 0000039C  C1 C7 07	     2		rol EDI, S11
- 0000039F  8B C7	     1		mov EAX, EDI
- 000003A1  03 C3	     1		add EAX, EBX
+ 000003FA  51		     2		push ECX
+ 000003FB  8B FB	     2		mov EDI, EBX
+ 000003FD  23 CB	     2		and ECX, EBX
+ 000003FF  F7 D7	     2		not EDI
+ 00000401  23 FA	     2		and EDI, EDX
+ 00000403  0B F9	     2		or EDI, ECX
+ 00000405  59		     2		pop ECX
+ 00000406  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
+ 00000409  81 C7 6B901122    1		add EDI, 06b901122h
+ 0000040F  03 C7	     1		add EAX, EDI
+ 00000411  8B F8	     2		mov EDI, EAX
+ 00000413  C1 C7 07	     2		rol EDI, S11
+ 00000416  8B C7	     1		mov EAX, EDI
+ 00000418  03 C3	     1		add EAX, EBX
 					FF EDX, EAX, EBX, ECX, [ESI +13 * DWORD_LENGTH], S12, 0fd987193h ; /* 14 */
- 000003A3  53		     2		push EBX
- 000003A4  8B F8	     2		mov EDI, EAX
- 000003A6  23 D8	     2		and EBX, EAX
- 000003A8  F7 D7	     2		not EDI
- 000003AA  23 F9	     2		and EDI, ECX
- 000003AC  0B FB	     2		or EDI, EBX
- 000003AE  5B		     2		pop EBX
- 000003AF  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
- 000003B2  81 C7 FD987193    1		add EDI, 0fd987193h
- 000003B8  03 D7	     1		add EDX, EDI
- 000003BA  8B FA	     2		mov EDI, EDX
- 000003BC  C1 C7 0C	     2		rol EDI, S12
- 000003BF  8B D7	     1		mov EDX, EDI
- 000003C1  03 D0	     1		add EDX, EAX
+ 0000041A  53		     2		push EBX
+ 0000041B  8B F8	     2		mov EDI, EAX
+ 0000041D  23 D8	     2		and EBX, EAX
+ 0000041F  F7 D7	     2		not EDI
+ 00000421  23 F9	     2		and EDI, ECX
+ 00000423  0B FB	     2		or EDI, EBX
+ 00000425  5B		     2		pop EBX
+ 00000426  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
+ 00000429  81 C7 FD987193    1		add EDI, 0fd987193h
+ 0000042F  03 D7	     1		add EDX, EDI
+ 00000431  8B FA	     2		mov EDI, EDX
+ 00000433  C1 C7 0C	     2		rol EDI, S12
+ 00000436  8B D7	     1		mov EDX, EDI
+ 00000438  03 D0	     1		add EDX, EAX
 					FF ECX, EDX, EAX, EBX, [ESI +14 * DWORD_LENGTH], S13, 0a679438eh ; /* 15 */
- 000003C3  50		     2		push EAX
- 000003C4  8B FA	     2		mov EDI, EDX
- 000003C6  23 C2	     2		and EAX, EDX
- 000003C8  F7 D7	     2		not EDI
- 000003CA  23 FB	     2		and EDI, EBX
- 000003CC  0B F8	     2		or EDI, EAX
- 000003CE  58		     2		pop EAX
- 000003CF  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
- 000003D2  81 C7 A679438E    1		add EDI, 0a679438eh
- 000003D8  03 CF	     1		add ECX, EDI
- 000003DA  8B F9	     2		mov EDI, ECX
- 000003DC  C1 C7 11	     2		rol EDI, S13
- 000003DF  8B CF	     1		mov ECX, EDI
- 000003E1  03 CA	     1		add ECX, EDX
+ 0000043A  50		     2		push EAX
+ 0000043B  8B FA	     2		mov EDI, EDX
+ 0000043D  23 C2	     2		and EAX, EDX
+ 0000043F  F7 D7	     2		not EDI
+ 00000441  23 FB	     2		and EDI, EBX
+ 00000443  0B F8	     2		or EDI, EAX
+ 00000445  58		     2		pop EAX
+ 00000446  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
+ 00000449  81 C7 A679438E    1		add EDI, 0a679438eh
+ 0000044F  03 CF	     1		add ECX, EDI
+ 00000451  8B F9	     2		mov EDI, ECX
+ 00000453  C1 C7 11	     2		rol EDI, S13
+ 00000456  8B CF	     1		mov ECX, EDI
+ 00000458  03 CA	     1		add ECX, EDX
 					FF EBX, ECX, EDX, EAX, [ESI +15 * DWORD_LENGTH], S14, 049b40821h ; /* 16 */	
- 000003E3  52		     2		push EDX
- 000003E4  8B F9	     2		mov EDI, ECX
- 000003E6  23 D1	     2		and EDX, ECX
- 000003E8  F7 D7	     2		not EDI
- 000003EA  23 F8	     2		and EDI, EAX
- 000003EC  0B FA	     2		or EDI, EDX
- 000003EE  5A		     2		pop EDX
- 000003EF  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
- 000003F2  81 C7 49B40821    1		add EDI, 049b40821h
- 000003F8  03 DF	     1		add EBX, EDI
- 000003FA  8B FB	     2		mov EDI, EBX
- 000003FC  C1 C7 16	     2		rol EDI, S14
- 000003FF  8B DF	     1		mov EBX, EDI
- 00000401  03 D9	     1		add EBX, ECX
+ 0000045A  52		     2		push EDX
+ 0000045B  8B F9	     2		mov EDI, ECX
+ 0000045D  23 D1	     2		and EDX, ECX
+ 0000045F  F7 D7	     2		not EDI
+ 00000461  23 F8	     2		and EDI, EAX
+ 00000463  0B FA	     2		or EDI, EDX
+ 00000465  5A		     2		pop EDX
+ 00000466  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
+ 00000469  81 C7 49B40821    1		add EDI, 049b40821h
+ 0000046F  03 DF	     1		add EBX, EDI
+ 00000471  8B FB	     2		mov EDI, EBX
+ 00000473  C1 C7 16	     2		rol EDI, S14
+ 00000476  8B DF	     1		mov EBX, EDI
+ 00000478  03 D9	     1		add EBX, ECX
 
 					; runda 2
 					GG EAX, EBX, ECX, EDX, [ESI + 1 * DWORD_LENGTH], S21, 0f61e2562h ; /* 17 */
- 00000403  53		     2		push EBX
- 00000404  8B FA	     2		mov EDI, EDX
- 00000406  23 DA	     2		and EBX, EDX
- 00000408  F7 D7	     2		not EDI
- 0000040A  23 F9	     2		and EDI, ECX
- 0000040C  0B FB	     2		or EDI, EBX
- 0000040E  5B		     2		pop EBX
- 0000040F  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
- 00000412  81 C7 F61E2562    1		add EDI, 0f61e2562h
- 00000418  03 C7	     1		add EAX, EDI
- 0000041A  8B F8	     2		mov EDI, EAX
- 0000041C  C1 C7 05	     2		rol EDI, S21
- 0000041F  8B C7	     1		mov EAX, EDI
- 00000421  03 C3	     1		add EAX, EBX
+ 0000047A  53		     2		push EBX
+ 0000047B  8B FA	     2		mov EDI, EDX
+ 0000047D  23 DA	     2		and EBX, EDX
+ 0000047F  F7 D7	     2		not EDI
+ 00000481  23 F9	     2		and EDI, ECX
+ 00000483  0B FB	     2		or EDI, EBX
+ 00000485  5B		     2		pop EBX
+ 00000486  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
+ 00000489  81 C7 F61E2562    1		add EDI, 0f61e2562h
+ 0000048F  03 C7	     1		add EAX, EDI
+ 00000491  8B F8	     2		mov EDI, EAX
+ 00000493  C1 C7 05	     2		rol EDI, S21
+ 00000496  8B C7	     1		mov EAX, EDI
+ 00000498  03 C3	     1		add EAX, EBX
 					GG EDX, EAX, EBX, ECX, [ESI + 6 * DWORD_LENGTH], S22, 0c040b340h ; /* 18 */
- 00000423  50		     2		push EAX
- 00000424  8B F9	     2		mov EDI, ECX
- 00000426  23 C1	     2		and EAX, ECX
- 00000428  F7 D7	     2		not EDI
- 0000042A  23 FB	     2		and EDI, EBX
- 0000042C  0B F8	     2		or EDI, EAX
- 0000042E  58		     2		pop EAX
- 0000042F  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
- 00000432  81 C7 C040B340    1		add EDI, 0c040b340h
- 00000438  03 D7	     1		add EDX, EDI
- 0000043A  8B FA	     2		mov EDI, EDX
- 0000043C  C1 C7 09	     2		rol EDI, S22
- 0000043F  8B D7	     1		mov EDX, EDI
- 00000441  03 D0	     1		add EDX, EAX
+ 0000049A  50		     2		push EAX
+ 0000049B  8B F9	     2		mov EDI, ECX
+ 0000049D  23 C1	     2		and EAX, ECX
+ 0000049F  F7 D7	     2		not EDI
+ 000004A1  23 FB	     2		and EDI, EBX
+ 000004A3  0B F8	     2		or EDI, EAX
+ 000004A5  58		     2		pop EAX
+ 000004A6  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
+ 000004A9  81 C7 C040B340    1		add EDI, 0c040b340h
+ 000004AF  03 D7	     1		add EDX, EDI
+ 000004B1  8B FA	     2		mov EDI, EDX
+ 000004B3  C1 C7 09	     2		rol EDI, S22
+ 000004B6  8B D7	     1		mov EDX, EDI
+ 000004B8  03 D0	     1		add EDX, EAX
 					GG ECX, EDX, EAX, EBX, [ESI +11 * DWORD_LENGTH], S23, 0265e5a51h ; /* 19 */
- 00000443  52		     2		push EDX
- 00000444  8B FB	     2		mov EDI, EBX
- 00000446  23 D3	     2		and EDX, EBX
- 00000448  F7 D7	     2		not EDI
- 0000044A  23 F8	     2		and EDI, EAX
- 0000044C  0B FA	     2		or EDI, EDX
- 0000044E  5A		     2		pop EDX
- 0000044F  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
- 00000452  81 C7 265E5A51    1		add EDI, 0265e5a51h
- 00000458  03 CF	     1		add ECX, EDI
- 0000045A  8B F9	     2		mov EDI, ECX
- 0000045C  C1 C7 0E	     2		rol EDI, S23
- 0000045F  8B CF	     1		mov ECX, EDI
- 00000461  03 CA	     1		add ECX, EDX
+ 000004BA  52		     2		push EDX
+ 000004BB  8B FB	     2		mov EDI, EBX
+ 000004BD  23 D3	     2		and EDX, EBX
+ 000004BF  F7 D7	     2		not EDI
+ 000004C1  23 F8	     2		and EDI, EAX
+ 000004C3  0B FA	     2		or EDI, EDX
+ 000004C5  5A		     2		pop EDX
+ 000004C6  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
+ 000004C9  81 C7 265E5A51    1		add EDI, 0265e5a51h
+ 000004CF  03 CF	     1		add ECX, EDI
+ 000004D1  8B F9	     2		mov EDI, ECX
+ 000004D3  C1 C7 0E	     2		rol EDI, S23
+ 000004D6  8B CF	     1		mov ECX, EDI
+ 000004D8  03 CA	     1		add ECX, EDX
 					GG EBX, ECX, EDX, EAX, [ESI + 0 * DWORD_LENGTH], S24, 0e9b6c7aah ; /* 20 */
- 00000463  51		     2		push ECX
- 00000464  8B F8	     2		mov EDI, EAX
- 00000466  23 C8	     2		and ECX, EAX
- 00000468  F7 D7	     2		not EDI
- 0000046A  23 FA	     2		and EDI, EDX
- 0000046C  0B F9	     2		or EDI, ECX
- 0000046E  59		     2		pop ECX
- 0000046F  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
- 00000471  81 C7 E9B6C7AA    1		add EDI, 0e9b6c7aah
- 00000477  03 DF	     1		add EBX, EDI
- 00000479  8B FB	     2		mov EDI, EBX
- 0000047B  C1 C7 14	     2		rol EDI, S24
- 0000047E  8B DF	     1		mov EBX, EDI
- 00000480  03 D9	     1		add EBX, ECX
+ 000004DA  51		     2		push ECX
+ 000004DB  8B F8	     2		mov EDI, EAX
+ 000004DD  23 C8	     2		and ECX, EAX
+ 000004DF  F7 D7	     2		not EDI
+ 000004E1  23 FA	     2		and EDI, EDX
+ 000004E3  0B F9	     2		or EDI, ECX
+ 000004E5  59		     2		pop ECX
+ 000004E6  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
+ 000004E8  81 C7 E9B6C7AA    1		add EDI, 0e9b6c7aah
+ 000004EE  03 DF	     1		add EBX, EDI
+ 000004F0  8B FB	     2		mov EDI, EBX
+ 000004F2  C1 C7 14	     2		rol EDI, S24
+ 000004F5  8B DF	     1		mov EBX, EDI
+ 000004F7  03 D9	     1		add EBX, ECX
 					GG EAX, EBX, ECX, EDX, [ESI + 5 * DWORD_LENGTH], S21, 0d62f105dh ; /* 21 */
- 00000482  53		     2		push EBX
- 00000483  8B FA	     2		mov EDI, EDX
- 00000485  23 DA	     2		and EBX, EDX
- 00000487  F7 D7	     2		not EDI
- 00000489  23 F9	     2		and EDI, ECX
- 0000048B  0B FB	     2		or EDI, EBX
- 0000048D  5B		     2		pop EBX
- 0000048E  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
- 00000491  81 C7 D62F105D    1		add EDI, 0d62f105dh
- 00000497  03 C7	     1		add EAX, EDI
- 00000499  8B F8	     2		mov EDI, EAX
- 0000049B  C1 C7 05	     2		rol EDI, S21
- 0000049E  8B C7	     1		mov EAX, EDI
- 000004A0  03 C3	     1		add EAX, EBX
+ 000004F9  53		     2		push EBX
+ 000004FA  8B FA	     2		mov EDI, EDX
+ 000004FC  23 DA	     2		and EBX, EDX
+ 000004FE  F7 D7	     2		not EDI
+ 00000500  23 F9	     2		and EDI, ECX
+ 00000502  0B FB	     2		or EDI, EBX
+ 00000504  5B		     2		pop EBX
+ 00000505  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
+ 00000508  81 C7 D62F105D    1		add EDI, 0d62f105dh
+ 0000050E  03 C7	     1		add EAX, EDI
+ 00000510  8B F8	     2		mov EDI, EAX
+ 00000512  C1 C7 05	     2		rol EDI, S21
+ 00000515  8B C7	     1		mov EAX, EDI
+ 00000517  03 C3	     1		add EAX, EBX
 					GG EDX, EAX, EBX, ECX, [ESI +10 * DWORD_LENGTH], S22,  02441453h ; /* 22 */
- 000004A2  50		     2		push EAX
- 000004A3  8B F9	     2		mov EDI, ECX
- 000004A5  23 C1	     2		and EAX, ECX
- 000004A7  F7 D7	     2		not EDI
- 000004A9  23 FB	     2		and EDI, EBX
- 000004AB  0B F8	     2		or EDI, EAX
- 000004AD  58		     2		pop EAX
- 000004AE  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
- 000004B1  81 C7 02441453    1		add EDI, 02441453h
- 000004B7  03 D7	     1		add EDX, EDI
- 000004B9  8B FA	     2		mov EDI, EDX
- 000004BB  C1 C7 09	     2		rol EDI, S22
- 000004BE  8B D7	     1		mov EDX, EDI
- 000004C0  03 D0	     1		add EDX, EAX
+ 00000519  50		     2		push EAX
+ 0000051A  8B F9	     2		mov EDI, ECX
+ 0000051C  23 C1	     2		and EAX, ECX
+ 0000051E  F7 D7	     2		not EDI
+ 00000520  23 FB	     2		and EDI, EBX
+ 00000522  0B F8	     2		or EDI, EAX
+ 00000524  58		     2		pop EAX
+ 00000525  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
+ 00000528  81 C7 02441453    1		add EDI, 02441453h
+ 0000052E  03 D7	     1		add EDX, EDI
+ 00000530  8B FA	     2		mov EDI, EDX
+ 00000532  C1 C7 09	     2		rol EDI, S22
+ 00000535  8B D7	     1		mov EDX, EDI
+ 00000537  03 D0	     1		add EDX, EAX
 					GG ECX, EDX, EAX, EBX, [ESI +15 * DWORD_LENGTH], S23, 0d8a1e681h ; /* 23 */
- 000004C2  52		     2		push EDX
- 000004C3  8B FB	     2		mov EDI, EBX
- 000004C5  23 D3	     2		and EDX, EBX
- 000004C7  F7 D7	     2		not EDI
- 000004C9  23 F8	     2		and EDI, EAX
- 000004CB  0B FA	     2		or EDI, EDX
- 000004CD  5A		     2		pop EDX
- 000004CE  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
- 000004D1  81 C7 D8A1E681    1		add EDI, 0d8a1e681h
- 000004D7  03 CF	     1		add ECX, EDI
- 000004D9  8B F9	     2		mov EDI, ECX
- 000004DB  C1 C7 0E	     2		rol EDI, S23
- 000004DE  8B CF	     1		mov ECX, EDI
- 000004E0  03 CA	     1		add ECX, EDX
+ 00000539  52		     2		push EDX
+ 0000053A  8B FB	     2		mov EDI, EBX
+ 0000053C  23 D3	     2		and EDX, EBX
+ 0000053E  F7 D7	     2		not EDI
+ 00000540  23 F8	     2		and EDI, EAX
+ 00000542  0B FA	     2		or EDI, EDX
+ 00000544  5A		     2		pop EDX
+ 00000545  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
+ 00000548  81 C7 D8A1E681    1		add EDI, 0d8a1e681h
+ 0000054E  03 CF	     1		add ECX, EDI
+ 00000550  8B F9	     2		mov EDI, ECX
+ 00000552  C1 C7 0E	     2		rol EDI, S23
+ 00000555  8B CF	     1		mov ECX, EDI
+ 00000557  03 CA	     1		add ECX, EDX
 					GG EBX, ECX, EDX, EAX, [ESI + 4 * DWORD_LENGTH], S24, 0e7d3fbc8h ; /* 24 */
- 000004E2  51		     2		push ECX
- 000004E3  8B F8	     2		mov EDI, EAX
- 000004E5  23 C8	     2		and ECX, EAX
- 000004E7  F7 D7	     2		not EDI
- 000004E9  23 FA	     2		and EDI, EDX
- 000004EB  0B F9	     2		or EDI, ECX
- 000004ED  59		     2		pop ECX
- 000004EE  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
- 000004F1  81 C7 E7D3FBC8    1		add EDI, 0e7d3fbc8h
- 000004F7  03 DF	     1		add EBX, EDI
- 000004F9  8B FB	     2		mov EDI, EBX
- 000004FB  C1 C7 14	     2		rol EDI, S24
- 000004FE  8B DF	     1		mov EBX, EDI
- 00000500  03 D9	     1		add EBX, ECX
+ 00000559  51		     2		push ECX
+ 0000055A  8B F8	     2		mov EDI, EAX
+ 0000055C  23 C8	     2		and ECX, EAX
+ 0000055E  F7 D7	     2		not EDI
+ 00000560  23 FA	     2		and EDI, EDX
+ 00000562  0B F9	     2		or EDI, ECX
+ 00000564  59		     2		pop ECX
+ 00000565  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
+ 00000568  81 C7 E7D3FBC8    1		add EDI, 0e7d3fbc8h
+ 0000056E  03 DF	     1		add EBX, EDI
+ 00000570  8B FB	     2		mov EDI, EBX
+ 00000572  C1 C7 14	     2		rol EDI, S24
+ 00000575  8B DF	     1		mov EBX, EDI
+ 00000577  03 D9	     1		add EBX, ECX
 					GG EAX, EBX, ECX, EDX, [ESI + 9 * DWORD_LENGTH], S21, 021e1cde6h ; /* 25 */
- 00000502  53		     2		push EBX
- 00000503  8B FA	     2		mov EDI, EDX
- 00000505  23 DA	     2		and EBX, EDX
- 00000507  F7 D7	     2		not EDI
- 00000509  23 F9	     2		and EDI, ECX
- 0000050B  0B FB	     2		or EDI, EBX
- 0000050D  5B		     2		pop EBX
- 0000050E  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
- 00000511  81 C7 21E1CDE6    1		add EDI, 021e1cde6h
- 00000517  03 C7	     1		add EAX, EDI
- 00000519  8B F8	     2		mov EDI, EAX
- 0000051B  C1 C7 05	     2		rol EDI, S21
- 0000051E  8B C7	     1		mov EAX, EDI
- 00000520  03 C3	     1		add EAX, EBX
+ 00000579  53		     2		push EBX
+ 0000057A  8B FA	     2		mov EDI, EDX
+ 0000057C  23 DA	     2		and EBX, EDX
+ 0000057E  F7 D7	     2		not EDI
+ 00000580  23 F9	     2		and EDI, ECX
+ 00000582  0B FB	     2		or EDI, EBX
+ 00000584  5B		     2		pop EBX
+ 00000585  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
+ 00000588  81 C7 21E1CDE6    1		add EDI, 021e1cde6h
+ 0000058E  03 C7	     1		add EAX, EDI
+ 00000590  8B F8	     2		mov EDI, EAX
+ 00000592  C1 C7 05	     2		rol EDI, S21
+ 00000595  8B C7	     1		mov EAX, EDI
+ 00000597  03 C3	     1		add EAX, EBX
 					GG EDX, EAX, EBX, ECX, [ESI +14 * DWORD_LENGTH], S22, 0c33707d6h ; /* 26 */
- 00000522  50		     2		push EAX
- 00000523  8B F9	     2		mov EDI, ECX
- 00000525  23 C1	     2		and EAX, ECX
- 00000527  F7 D7	     2		not EDI
- 00000529  23 FB	     2		and EDI, EBX
- 0000052B  0B F8	     2		or EDI, EAX
- 0000052D  58		     2		pop EAX
- 0000052E  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
- 00000531  81 C7 C33707D6    1		add EDI, 0c33707d6h
- 00000537  03 D7	     1		add EDX, EDI
- 00000539  8B FA	     2		mov EDI, EDX
- 0000053B  C1 C7 09	     2		rol EDI, S22
- 0000053E  8B D7	     1		mov EDX, EDI
- 00000540  03 D0	     1		add EDX, EAX
+ 00000599  50		     2		push EAX
+ 0000059A  8B F9	     2		mov EDI, ECX
+ 0000059C  23 C1	     2		and EAX, ECX
+ 0000059E  F7 D7	     2		not EDI
+ 000005A0  23 FB	     2		and EDI, EBX
+ 000005A2  0B F8	     2		or EDI, EAX
+ 000005A4  58		     2		pop EAX
+ 000005A5  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
+ 000005A8  81 C7 C33707D6    1		add EDI, 0c33707d6h
+ 000005AE  03 D7	     1		add EDX, EDI
+ 000005B0  8B FA	     2		mov EDI, EDX
+ 000005B2  C1 C7 09	     2		rol EDI, S22
+ 000005B5  8B D7	     1		mov EDX, EDI
+ 000005B7  03 D0	     1		add EDX, EAX
 					GG ECX, EDX, EAX, EBX, [ESI + 3 * DWORD_LENGTH], S23, 0f4d50d87h ; /* 27 */
- 00000542  52		     2		push EDX
- 00000543  8B FB	     2		mov EDI, EBX
- 00000545  23 D3	     2		and EDX, EBX
- 00000547  F7 D7	     2		not EDI
- 00000549  23 F8	     2		and EDI, EAX
- 0000054B  0B FA	     2		or EDI, EDX
- 0000054D  5A		     2		pop EDX
- 0000054E  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
- 00000551  81 C7 F4D50D87    1		add EDI, 0f4d50d87h
- 00000557  03 CF	     1		add ECX, EDI
- 00000559  8B F9	     2		mov EDI, ECX
- 0000055B  C1 C7 0E	     2		rol EDI, S23
- 0000055E  8B CF	     1		mov ECX, EDI
- 00000560  03 CA	     1		add ECX, EDX
+ 000005B9  52		     2		push EDX
+ 000005BA  8B FB	     2		mov EDI, EBX
+ 000005BC  23 D3	     2		and EDX, EBX
+ 000005BE  F7 D7	     2		not EDI
+ 000005C0  23 F8	     2		and EDI, EAX
+ 000005C2  0B FA	     2		or EDI, EDX
+ 000005C4  5A		     2		pop EDX
+ 000005C5  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
+ 000005C8  81 C7 F4D50D87    1		add EDI, 0f4d50d87h
+ 000005CE  03 CF	     1		add ECX, EDI
+ 000005D0  8B F9	     2		mov EDI, ECX
+ 000005D2  C1 C7 0E	     2		rol EDI, S23
+ 000005D5  8B CF	     1		mov ECX, EDI
+ 000005D7  03 CA	     1		add ECX, EDX
 					GG EBX, ECX, EDX, EAX, [ESI + 8 * DWORD_LENGTH], S24, 0455a14edh ; /* 28 */
- 00000562  51		     2		push ECX
- 00000563  8B F8	     2		mov EDI, EAX
- 00000565  23 C8	     2		and ECX, EAX
- 00000567  F7 D7	     2		not EDI
- 00000569  23 FA	     2		and EDI, EDX
- 0000056B  0B F9	     2		or EDI, ECX
- 0000056D  59		     2		pop ECX
- 0000056E  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
- 00000571  81 C7 455A14ED    1		add EDI, 0455a14edh
- 00000577  03 DF	     1		add EBX, EDI
- 00000579  8B FB	     2		mov EDI, EBX
- 0000057B  C1 C7 14	     2		rol EDI, S24
- 0000057E  8B DF	     1		mov EBX, EDI
- 00000580  03 D9	     1		add EBX, ECX
+ 000005D9  51		     2		push ECX
+ 000005DA  8B F8	     2		mov EDI, EAX
+ 000005DC  23 C8	     2		and ECX, EAX
+ 000005DE  F7 D7	     2		not EDI
+ 000005E0  23 FA	     2		and EDI, EDX
+ 000005E2  0B F9	     2		or EDI, ECX
+ 000005E4  59		     2		pop ECX
+ 000005E5  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
+ 000005E8  81 C7 455A14ED    1		add EDI, 0455a14edh
+ 000005EE  03 DF	     1		add EBX, EDI
+ 000005F0  8B FB	     2		mov EDI, EBX
+ 000005F2  C1 C7 14	     2		rol EDI, S24
+ 000005F5  8B DF	     1		mov EBX, EDI
+ 000005F7  03 D9	     1		add EBX, ECX
 					GG EAX, EBX, ECX, EDX, [ESI +13 * DWORD_LENGTH], S21, 0a9e3e905h ; /* 29 */
- 00000582  53		     2		push EBX
- 00000583  8B FA	     2		mov EDI, EDX
- 00000585  23 DA	     2		and EBX, EDX
- 00000587  F7 D7	     2		not EDI
- 00000589  23 F9	     2		and EDI, ECX
- 0000058B  0B FB	     2		or EDI, EBX
- 0000058D  5B		     2		pop EBX
- 0000058E  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
- 00000591  81 C7 A9E3E905    1		add EDI, 0a9e3e905h
- 00000597  03 C7	     1		add EAX, EDI
- 00000599  8B F8	     2		mov EDI, EAX
- 0000059B  C1 C7 05	     2		rol EDI, S21
- 0000059E  8B C7	     1		mov EAX, EDI
- 000005A0  03 C3	     1		add EAX, EBX
+ 000005F9  53		     2		push EBX
+ 000005FA  8B FA	     2		mov EDI, EDX
+ 000005FC  23 DA	     2		and EBX, EDX
+ 000005FE  F7 D7	     2		not EDI
+ 00000600  23 F9	     2		and EDI, ECX
+ 00000602  0B FB	     2		or EDI, EBX
+ 00000604  5B		     2		pop EBX
+ 00000605  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
+ 00000608  81 C7 A9E3E905    1		add EDI, 0a9e3e905h
+ 0000060E  03 C7	     1		add EAX, EDI
+ 00000610  8B F8	     2		mov EDI, EAX
+ 00000612  C1 C7 05	     2		rol EDI, S21
+ 00000615  8B C7	     1		mov EAX, EDI
+ 00000617  03 C3	     1		add EAX, EBX
 					GG EDX, EAX, EBX, ECX, [ESI + 2 * DWORD_LENGTH], S22, 0fcefa3f8h ; /* 30 */
- 000005A2  50		     2		push EAX
- 000005A3  8B F9	     2		mov EDI, ECX
- 000005A5  23 C1	     2		and EAX, ECX
- 000005A7  F7 D7	     2		not EDI
- 000005A9  23 FB	     2		and EDI, EBX
- 000005AB  0B F8	     2		or EDI, EAX
- 000005AD  58		     2		pop EAX
- 000005AE  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
- 000005B1  81 C7 FCEFA3F8    1		add EDI, 0fcefa3f8h
- 000005B7  03 D7	     1		add EDX, EDI
- 000005B9  8B FA	     2		mov EDI, EDX
- 000005BB  C1 C7 09	     2		rol EDI, S22
- 000005BE  8B D7	     1		mov EDX, EDI
- 000005C0  03 D0	     1		add EDX, EAX
+ 00000619  50		     2		push EAX
+ 0000061A  8B F9	     2		mov EDI, ECX
+ 0000061C  23 C1	     2		and EAX, ECX
+ 0000061E  F7 D7	     2		not EDI
+ 00000620  23 FB	     2		and EDI, EBX
+ 00000622  0B F8	     2		or EDI, EAX
+ 00000624  58		     2		pop EAX
+ 00000625  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
+ 00000628  81 C7 FCEFA3F8    1		add EDI, 0fcefa3f8h
+ 0000062E  03 D7	     1		add EDX, EDI
+ 00000630  8B FA	     2		mov EDI, EDX
+ 00000632  C1 C7 09	     2		rol EDI, S22
+ 00000635  8B D7	     1		mov EDX, EDI
+ 00000637  03 D0	     1		add EDX, EAX
 					GG ECX, EDX, EAX, EBX, [ESI + 7 * DWORD_LENGTH], S23, 0676f02d9h ; /* 31 */
- 000005C2  52		     2		push EDX
- 000005C3  8B FB	     2		mov EDI, EBX
- 000005C5  23 D3	     2		and EDX, EBX
- 000005C7  F7 D7	     2		not EDI
- 000005C9  23 F8	     2		and EDI, EAX
- 000005CB  0B FA	     2		or EDI, EDX
- 000005CD  5A		     2		pop EDX
- 000005CE  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
- 000005D1  81 C7 676F02D9    1		add EDI, 0676f02d9h
- 000005D7  03 CF	     1		add ECX, EDI
- 000005D9  8B F9	     2		mov EDI, ECX
- 000005DB  C1 C7 0E	     2		rol EDI, S23
- 000005DE  8B CF	     1		mov ECX, EDI
- 000005E0  03 CA	     1		add ECX, EDX
+ 00000639  52		     2		push EDX
+ 0000063A  8B FB	     2		mov EDI, EBX
+ 0000063C  23 D3	     2		and EDX, EBX
+ 0000063E  F7 D7	     2		not EDI
+ 00000640  23 F8	     2		and EDI, EAX
+ 00000642  0B FA	     2		or EDI, EDX
+ 00000644  5A		     2		pop EDX
+ 00000645  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
+ 00000648  81 C7 676F02D9    1		add EDI, 0676f02d9h
+ 0000064E  03 CF	     1		add ECX, EDI
+ 00000650  8B F9	     2		mov EDI, ECX
+ 00000652  C1 C7 0E	     2		rol EDI, S23
+ 00000655  8B CF	     1		mov ECX, EDI
+ 00000657  03 CA	     1		add ECX, EDX
 					GG EBX, ECX, EDX, EAX, [ESI +12 * DWORD_LENGTH], S24, 08d2a4c8ah ; /* 32 */
- 000005E2  51		     2		push ECX
- 000005E3  8B F8	     2		mov EDI, EAX
- 000005E5  23 C8	     2		and ECX, EAX
- 000005E7  F7 D7	     2		not EDI
- 000005E9  23 FA	     2		and EDI, EDX
- 000005EB  0B F9	     2		or EDI, ECX
- 000005ED  59		     2		pop ECX
- 000005EE  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
- 000005F1  81 C7 8D2A4C8A    1		add EDI, 08d2a4c8ah
- 000005F7  03 DF	     1		add EBX, EDI
- 000005F9  8B FB	     2		mov EDI, EBX
- 000005FB  C1 C7 14	     2		rol EDI, S24
- 000005FE  8B DF	     1		mov EBX, EDI
- 00000600  03 D9	     1		add EBX, ECX
+ 00000659  51		     2		push ECX
+ 0000065A  8B F8	     2		mov EDI, EAX
+ 0000065C  23 C8	     2		and ECX, EAX
+ 0000065E  F7 D7	     2		not EDI
+ 00000660  23 FA	     2		and EDI, EDX
+ 00000662  0B F9	     2		or EDI, ECX
+ 00000664  59		     2		pop ECX
+ 00000665  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
+ 00000668  81 C7 8D2A4C8A    1		add EDI, 08d2a4c8ah
+ 0000066E  03 DF	     1		add EBX, EDI
+ 00000670  8B FB	     2		mov EDI, EBX
+ 00000672  C1 C7 14	     2		rol EDI, S24
+ 00000675  8B DF	     1		mov EBX, EDI
+ 00000677  03 D9	     1		add EBX, ECX
 
 					; runda 3
 					HH EAX, EBX, ECX, EDX, [ESI + 5 * DWORD_LENGTH], S31, 0fffa3942h ; /* 33 */
- 00000602  8B FB	     2		mov EDI, EBX
- 00000604  33 F9	     2		xor EDI, ECX
- 00000606  33 FA	     2		xor EDI, EDX
- 00000608  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
- 0000060B  81 C7 FFFA3942    1		add EDI, 0fffa3942h
- 00000611  03 C7	     1		add EAX, EDI
- 00000613  8B F8	     2		mov EDI, EAX
- 00000615  C1 C7 04	     2		rol EDI, S31
- 00000618  8B C7	     1		mov EAX, EDI
- 0000061A  03 C3	     1		add EAX, EBX
+ 00000679  8B FB	     2		mov EDI, EBX
+ 0000067B  33 F9	     2		xor EDI, ECX
+ 0000067D  33 FA	     2		xor EDI, EDX
+ 0000067F  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
+ 00000682  81 C7 FFFA3942    1		add EDI, 0fffa3942h
+ 00000688  03 C7	     1		add EAX, EDI
+ 0000068A  8B F8	     2		mov EDI, EAX
+ 0000068C  C1 C7 04	     2		rol EDI, S31
+ 0000068F  8B C7	     1		mov EAX, EDI
+ 00000691  03 C3	     1		add EAX, EBX
 					HH EDX, EAX, EBX, ECX, [ESI + 8 * DWORD_LENGTH], S32, 08771f681h ; /* 34 */
- 0000061C  8B F8	     2		mov EDI, EAX
- 0000061E  33 FB	     2		xor EDI, EBX
- 00000620  33 F9	     2		xor EDI, ECX
- 00000622  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
- 00000625  81 C7 8771F681    1		add EDI, 08771f681h
- 0000062B  03 D7	     1		add EDX, EDI
- 0000062D  8B FA	     2		mov EDI, EDX
- 0000062F  C1 C7 0B	     2		rol EDI, S32
- 00000632  8B D7	     1		mov EDX, EDI
- 00000634  03 D0	     1		add EDX, EAX
+ 00000693  8B F8	     2		mov EDI, EAX
+ 00000695  33 FB	     2		xor EDI, EBX
+ 00000697  33 F9	     2		xor EDI, ECX
+ 00000699  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
+ 0000069C  81 C7 8771F681    1		add EDI, 08771f681h
+ 000006A2  03 D7	     1		add EDX, EDI
+ 000006A4  8B FA	     2		mov EDI, EDX
+ 000006A6  C1 C7 0B	     2		rol EDI, S32
+ 000006A9  8B D7	     1		mov EDX, EDI
+ 000006AB  03 D0	     1		add EDX, EAX
 					HH ECX, EDX, EAX, EBX, [ESI +11 * DWORD_LENGTH], S33, 06d9d6122h ; /* 35 */
- 00000636  8B FA	     2		mov EDI, EDX
- 00000638  33 F8	     2		xor EDI, EAX
- 0000063A  33 FB	     2		xor EDI, EBX
- 0000063C  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
- 0000063F  81 C7 6D9D6122    1		add EDI, 06d9d6122h
- 00000645  03 CF	     1		add ECX, EDI
- 00000647  8B F9	     2		mov EDI, ECX
- 00000649  C1 C7 10	     2		rol EDI, S33
- 0000064C  8B CF	     1		mov ECX, EDI
- 0000064E  03 CA	     1		add ECX, EDX
+ 000006AD  8B FA	     2		mov EDI, EDX
+ 000006AF  33 F8	     2		xor EDI, EAX
+ 000006B1  33 FB	     2		xor EDI, EBX
+ 000006B3  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
+ 000006B6  81 C7 6D9D6122    1		add EDI, 06d9d6122h
+ 000006BC  03 CF	     1		add ECX, EDI
+ 000006BE  8B F9	     2		mov EDI, ECX
+ 000006C0  C1 C7 10	     2		rol EDI, S33
+ 000006C3  8B CF	     1		mov ECX, EDI
+ 000006C5  03 CA	     1		add ECX, EDX
 					HH EBX, ECX, EDX, EAX, [ESI +14 * DWORD_LENGTH], S34, 0fde5380ch ; /* 36 */
- 00000650  8B F9	     2		mov EDI, ECX
- 00000652  33 FA	     2		xor EDI, EDX
- 00000654  33 F8	     2		xor EDI, EAX
- 00000656  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
- 00000659  81 C7 FDE5380C    1		add EDI, 0fde5380ch
- 0000065F  03 DF	     1		add EBX, EDI
- 00000661  8B FB	     2		mov EDI, EBX
- 00000663  C1 C7 17	     2		rol EDI, S34
- 00000666  8B DF	     1		mov EBX, EDI
- 00000668  03 D9	     1		add EBX, ECX
+ 000006C7  8B F9	     2		mov EDI, ECX
+ 000006C9  33 FA	     2		xor EDI, EDX
+ 000006CB  33 F8	     2		xor EDI, EAX
+ 000006CD  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
+ 000006D0  81 C7 FDE5380C    1		add EDI, 0fde5380ch
+ 000006D6  03 DF	     1		add EBX, EDI
+ 000006D8  8B FB	     2		mov EDI, EBX
+ 000006DA  C1 C7 17	     2		rol EDI, S34
+ 000006DD  8B DF	     1		mov EBX, EDI
+ 000006DF  03 D9	     1		add EBX, ECX
 					HH EAX, EBX, ECX, EDX, [ESI + 1 * DWORD_LENGTH], S31, 0a4beea44h ; /* 37 */
- 0000066A  8B FB	     2		mov EDI, EBX
- 0000066C  33 F9	     2		xor EDI, ECX
- 0000066E  33 FA	     2		xor EDI, EDX
- 00000670  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
- 00000673  81 C7 A4BEEA44    1		add EDI, 0a4beea44h
- 00000679  03 C7	     1		add EAX, EDI
- 0000067B  8B F8	     2		mov EDI, EAX
- 0000067D  C1 C7 04	     2		rol EDI, S31
- 00000680  8B C7	     1		mov EAX, EDI
- 00000682  03 C3	     1		add EAX, EBX
+ 000006E1  8B FB	     2		mov EDI, EBX
+ 000006E3  33 F9	     2		xor EDI, ECX
+ 000006E5  33 FA	     2		xor EDI, EDX
+ 000006E7  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
+ 000006EA  81 C7 A4BEEA44    1		add EDI, 0a4beea44h
+ 000006F0  03 C7	     1		add EAX, EDI
+ 000006F2  8B F8	     2		mov EDI, EAX
+ 000006F4  C1 C7 04	     2		rol EDI, S31
+ 000006F7  8B C7	     1		mov EAX, EDI
+ 000006F9  03 C3	     1		add EAX, EBX
 					HH EDX, EAX, EBX, ECX, [ESI + 4 * DWORD_LENGTH], S32, 04bdecfa9h ; /* 38 */
- 00000684  8B F8	     2		mov EDI, EAX
- 00000686  33 FB	     2		xor EDI, EBX
- 00000688  33 F9	     2		xor EDI, ECX
- 0000068A  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
- 0000068D  81 C7 4BDECFA9    1		add EDI, 04bdecfa9h
- 00000693  03 D7	     1		add EDX, EDI
- 00000695  8B FA	     2		mov EDI, EDX
- 00000697  C1 C7 0B	     2		rol EDI, S32
- 0000069A  8B D7	     1		mov EDX, EDI
- 0000069C  03 D0	     1		add EDX, EAX
+ 000006FB  8B F8	     2		mov EDI, EAX
+ 000006FD  33 FB	     2		xor EDI, EBX
+ 000006FF  33 F9	     2		xor EDI, ECX
+ 00000701  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
+ 00000704  81 C7 4BDECFA9    1		add EDI, 04bdecfa9h
+ 0000070A  03 D7	     1		add EDX, EDI
+ 0000070C  8B FA	     2		mov EDI, EDX
+ 0000070E  C1 C7 0B	     2		rol EDI, S32
+ 00000711  8B D7	     1		mov EDX, EDI
+ 00000713  03 D0	     1		add EDX, EAX
 					HH ECX, EDX, EAX, EBX, [ESI + 7 * DWORD_LENGTH], S33, 0f6bb4b60h ; /* 39 */
- 0000069E  8B FA	     2		mov EDI, EDX
- 000006A0  33 F8	     2		xor EDI, EAX
- 000006A2  33 FB	     2		xor EDI, EBX
- 000006A4  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
- 000006A7  81 C7 F6BB4B60    1		add EDI, 0f6bb4b60h
- 000006AD  03 CF	     1		add ECX, EDI
- 000006AF  8B F9	     2		mov EDI, ECX
- 000006B1  C1 C7 10	     2		rol EDI, S33
- 000006B4  8B CF	     1		mov ECX, EDI
- 000006B6  03 CA	     1		add ECX, EDX
+ 00000715  8B FA	     2		mov EDI, EDX
+ 00000717  33 F8	     2		xor EDI, EAX
+ 00000719  33 FB	     2		xor EDI, EBX
+ 0000071B  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
+ 0000071E  81 C7 F6BB4B60    1		add EDI, 0f6bb4b60h
+ 00000724  03 CF	     1		add ECX, EDI
+ 00000726  8B F9	     2		mov EDI, ECX
+ 00000728  C1 C7 10	     2		rol EDI, S33
+ 0000072B  8B CF	     1		mov ECX, EDI
+ 0000072D  03 CA	     1		add ECX, EDX
 					HH EBX, ECX, EDX, EAX, [ESI +10 * DWORD_LENGTH], S34, 0bebfbc70h ; /* 40 */
- 000006B8  8B F9	     2		mov EDI, ECX
- 000006BA  33 FA	     2		xor EDI, EDX
- 000006BC  33 F8	     2		xor EDI, EAX
- 000006BE  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
- 000006C1  81 C7 BEBFBC70    1		add EDI, 0bebfbc70h
- 000006C7  03 DF	     1		add EBX, EDI
- 000006C9  8B FB	     2		mov EDI, EBX
- 000006CB  C1 C7 17	     2		rol EDI, S34
- 000006CE  8B DF	     1		mov EBX, EDI
- 000006D0  03 D9	     1		add EBX, ECX
+ 0000072F  8B F9	     2		mov EDI, ECX
+ 00000731  33 FA	     2		xor EDI, EDX
+ 00000733  33 F8	     2		xor EDI, EAX
+ 00000735  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
+ 00000738  81 C7 BEBFBC70    1		add EDI, 0bebfbc70h
+ 0000073E  03 DF	     1		add EBX, EDI
+ 00000740  8B FB	     2		mov EDI, EBX
+ 00000742  C1 C7 17	     2		rol EDI, S34
+ 00000745  8B DF	     1		mov EBX, EDI
+ 00000747  03 D9	     1		add EBX, ECX
 					HH EAX, EBX, ECX, EDX, [ESI +13 * DWORD_LENGTH], S31, 0289b7ec6h ; /* 41 */
- 000006D2  8B FB	     2		mov EDI, EBX
- 000006D4  33 F9	     2		xor EDI, ECX
- 000006D6  33 FA	     2		xor EDI, EDX
- 000006D8  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
- 000006DB  81 C7 289B7EC6    1		add EDI, 0289b7ec6h
- 000006E1  03 C7	     1		add EAX, EDI
- 000006E3  8B F8	     2		mov EDI, EAX
- 000006E5  C1 C7 04	     2		rol EDI, S31
- 000006E8  8B C7	     1		mov EAX, EDI
- 000006EA  03 C3	     1		add EAX, EBX
+ 00000749  8B FB	     2		mov EDI, EBX
+ 0000074B  33 F9	     2		xor EDI, ECX
+ 0000074D  33 FA	     2		xor EDI, EDX
+ 0000074F  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
+ 00000752  81 C7 289B7EC6    1		add EDI, 0289b7ec6h
+ 00000758  03 C7	     1		add EAX, EDI
+ 0000075A  8B F8	     2		mov EDI, EAX
+ 0000075C  C1 C7 04	     2		rol EDI, S31
+ 0000075F  8B C7	     1		mov EAX, EDI
+ 00000761  03 C3	     1		add EAX, EBX
 					HH EDX, EAX, EBX, ECX, [ESI + 0 * DWORD_LENGTH], S32, 0eaa127fah ; /* 42 */
- 000006EC  8B F8	     2		mov EDI, EAX
- 000006EE  33 FB	     2		xor EDI, EBX
- 000006F0  33 F9	     2		xor EDI, ECX
- 000006F2  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
- 000006F4  81 C7 EAA127FA    1		add EDI, 0eaa127fah
- 000006FA  03 D7	     1		add EDX, EDI
- 000006FC  8B FA	     2		mov EDI, EDX
- 000006FE  C1 C7 0B	     2		rol EDI, S32
- 00000701  8B D7	     1		mov EDX, EDI
- 00000703  03 D0	     1		add EDX, EAX
+ 00000763  8B F8	     2		mov EDI, EAX
+ 00000765  33 FB	     2		xor EDI, EBX
+ 00000767  33 F9	     2		xor EDI, ECX
+ 00000769  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
+ 0000076B  81 C7 EAA127FA    1		add EDI, 0eaa127fah
+ 00000771  03 D7	     1		add EDX, EDI
+ 00000773  8B FA	     2		mov EDI, EDX
+ 00000775  C1 C7 0B	     2		rol EDI, S32
+ 00000778  8B D7	     1		mov EDX, EDI
+ 0000077A  03 D0	     1		add EDX, EAX
 					HH ECX, EDX, EAX, EBX, [ESI + 3 * DWORD_LENGTH], S33, 0d4ef3085h ; /* 43 */
- 00000705  8B FA	     2		mov EDI, EDX
- 00000707  33 F8	     2		xor EDI, EAX
- 00000709  33 FB	     2		xor EDI, EBX
- 0000070B  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
- 0000070E  81 C7 D4EF3085    1		add EDI, 0d4ef3085h
- 00000714  03 CF	     1		add ECX, EDI
- 00000716  8B F9	     2		mov EDI, ECX
- 00000718  C1 C7 10	     2		rol EDI, S33
- 0000071B  8B CF	     1		mov ECX, EDI
- 0000071D  03 CA	     1		add ECX, EDX
+ 0000077C  8B FA	     2		mov EDI, EDX
+ 0000077E  33 F8	     2		xor EDI, EAX
+ 00000780  33 FB	     2		xor EDI, EBX
+ 00000782  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
+ 00000785  81 C7 D4EF3085    1		add EDI, 0d4ef3085h
+ 0000078B  03 CF	     1		add ECX, EDI
+ 0000078D  8B F9	     2		mov EDI, ECX
+ 0000078F  C1 C7 10	     2		rol EDI, S33
+ 00000792  8B CF	     1		mov ECX, EDI
+ 00000794  03 CA	     1		add ECX, EDX
 					HH EBX, ECX, EDX, EAX, [ESI + 6 * DWORD_LENGTH], S34,  04881d05h ; /* 44 */
- 0000071F  8B F9	     2		mov EDI, ECX
- 00000721  33 FA	     2		xor EDI, EDX
- 00000723  33 F8	     2		xor EDI, EAX
- 00000725  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
- 00000728  81 C7 04881D05    1		add EDI, 04881d05h
- 0000072E  03 DF	     1		add EBX, EDI
- 00000730  8B FB	     2		mov EDI, EBX
- 00000732  C1 C7 17	     2		rol EDI, S34
- 00000735  8B DF	     1		mov EBX, EDI
- 00000737  03 D9	     1		add EBX, ECX
+ 00000796  8B F9	     2		mov EDI, ECX
+ 00000798  33 FA	     2		xor EDI, EDX
+ 0000079A  33 F8	     2		xor EDI, EAX
+ 0000079C  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
+ 0000079F  81 C7 04881D05    1		add EDI, 04881d05h
+ 000007A5  03 DF	     1		add EBX, EDI
+ 000007A7  8B FB	     2		mov EDI, EBX
+ 000007A9  C1 C7 17	     2		rol EDI, S34
+ 000007AC  8B DF	     1		mov EBX, EDI
+ 000007AE  03 D9	     1		add EBX, ECX
 					HH EAX, EBX, ECX, EDX, [ESI + 9 * DWORD_LENGTH], S31, 0d9d4d039h ; /* 45 */
- 00000739  8B FB	     2		mov EDI, EBX
- 0000073B  33 F9	     2		xor EDI, ECX
- 0000073D  33 FA	     2		xor EDI, EDX
- 0000073F  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
- 00000742  81 C7 D9D4D039    1		add EDI, 0d9d4d039h
- 00000748  03 C7	     1		add EAX, EDI
- 0000074A  8B F8	     2		mov EDI, EAX
- 0000074C  C1 C7 04	     2		rol EDI, S31
- 0000074F  8B C7	     1		mov EAX, EDI
- 00000751  03 C3	     1		add EAX, EBX
+ 000007B0  8B FB	     2		mov EDI, EBX
+ 000007B2  33 F9	     2		xor EDI, ECX
+ 000007B4  33 FA	     2		xor EDI, EDX
+ 000007B6  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
+ 000007B9  81 C7 D9D4D039    1		add EDI, 0d9d4d039h
+ 000007BF  03 C7	     1		add EAX, EDI
+ 000007C1  8B F8	     2		mov EDI, EAX
+ 000007C3  C1 C7 04	     2		rol EDI, S31
+ 000007C6  8B C7	     1		mov EAX, EDI
+ 000007C8  03 C3	     1		add EAX, EBX
 					HH EDX, EAX, EBX, ECX, [ESI +12 * DWORD_LENGTH], S32, 0e6db99e5h ; /* 46 */
- 00000753  8B F8	     2		mov EDI, EAX
- 00000755  33 FB	     2		xor EDI, EBX
- 00000757  33 F9	     2		xor EDI, ECX
- 00000759  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
- 0000075C  81 C7 E6DB99E5    1		add EDI, 0e6db99e5h
- 00000762  03 D7	     1		add EDX, EDI
- 00000764  8B FA	     2		mov EDI, EDX
- 00000766  C1 C7 0B	     2		rol EDI, S32
- 00000769  8B D7	     1		mov EDX, EDI
- 0000076B  03 D0	     1		add EDX, EAX
+ 000007CA  8B F8	     2		mov EDI, EAX
+ 000007CC  33 FB	     2		xor EDI, EBX
+ 000007CE  33 F9	     2		xor EDI, ECX
+ 000007D0  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
+ 000007D3  81 C7 E6DB99E5    1		add EDI, 0e6db99e5h
+ 000007D9  03 D7	     1		add EDX, EDI
+ 000007DB  8B FA	     2		mov EDI, EDX
+ 000007DD  C1 C7 0B	     2		rol EDI, S32
+ 000007E0  8B D7	     1		mov EDX, EDI
+ 000007E2  03 D0	     1		add EDX, EAX
 					HH ECX, EDX, EAX, EBX, [ESI +15 * DWORD_LENGTH], S33, 01fa27cf8h ; /* 47 */
- 0000076D  8B FA	     2		mov EDI, EDX
- 0000076F  33 F8	     2		xor EDI, EAX
- 00000771  33 FB	     2		xor EDI, EBX
- 00000773  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
- 00000776  81 C7 1FA27CF8    1		add EDI, 01fa27cf8h
- 0000077C  03 CF	     1		add ECX, EDI
- 0000077E  8B F9	     2		mov EDI, ECX
- 00000780  C1 C7 10	     2		rol EDI, S33
- 00000783  8B CF	     1		mov ECX, EDI
- 00000785  03 CA	     1		add ECX, EDX
+ 000007E4  8B FA	     2		mov EDI, EDX
+ 000007E6  33 F8	     2		xor EDI, EAX
+ 000007E8  33 FB	     2		xor EDI, EBX
+ 000007EA  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
+ 000007ED  81 C7 1FA27CF8    1		add EDI, 01fa27cf8h
+ 000007F3  03 CF	     1		add ECX, EDI
+ 000007F5  8B F9	     2		mov EDI, ECX
+ 000007F7  C1 C7 10	     2		rol EDI, S33
+ 000007FA  8B CF	     1		mov ECX, EDI
+ 000007FC  03 CA	     1		add ECX, EDX
 					HH EBX, ECX, EDX, EAX, [ESI + 2 * DWORD_LENGTH], S34, 0c4ac5665h ; /* 48 */
- 00000787  8B F9	     2		mov EDI, ECX
- 00000789  33 FA	     2		xor EDI, EDX
- 0000078B  33 F8	     2		xor EDI, EAX
- 0000078D  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
- 00000790  81 C7 C4AC5665    1		add EDI, 0c4ac5665h
- 00000796  03 DF	     1		add EBX, EDI
- 00000798  8B FB	     2		mov EDI, EBX
- 0000079A  C1 C7 17	     2		rol EDI, S34
- 0000079D  8B DF	     1		mov EBX, EDI
- 0000079F  03 D9	     1		add EBX, ECX
+ 000007FE  8B F9	     2		mov EDI, ECX
+ 00000800  33 FA	     2		xor EDI, EDX
+ 00000802  33 F8	     2		xor EDI, EAX
+ 00000804  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
+ 00000807  81 C7 C4AC5665    1		add EDI, 0c4ac5665h
+ 0000080D  03 DF	     1		add EBX, EDI
+ 0000080F  8B FB	     2		mov EDI, EBX
+ 00000811  C1 C7 17	     2		rol EDI, S34
+ 00000814  8B DF	     1		mov EBX, EDI
+ 00000816  03 D9	     1		add EBX, ECX
 
 					; runda 4
 					II EAX, EBX, ECX, EDX, [ESI + 0 * DWORD_LENGTH], S41, 0f4292244h ; /* 49 */
- 000007A1  8B FA	     2		mov EDI, EDX
- 000007A3  F7 D7	     2		not EDI
- 000007A5  0B FB	     2		or EDI, EBX
- 000007A7  33 F9	     2		xor EDI, ECX
- 000007A9  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
- 000007AB  81 C7 F4292244    1		add EDI, 0f4292244h
- 000007B1  03 C7	     1		add EAX, EDI
- 000007B3  8B F8	     2		mov EDI, EAX
- 000007B5  C1 C7 06	     2		rol EDI, S41
- 000007B8  8B C7	     1		mov EAX, EDI
- 000007BA  03 C3	     1		add EAX, EBX
+ 00000818  8B FA	     2		mov EDI, EDX
+ 0000081A  F7 D7	     2		not EDI
+ 0000081C  0B FB	     2		or EDI, EBX
+ 0000081E  33 F9	     2		xor EDI, ECX
+ 00000820  03 3E	     1		add EDI, [ESI + 0 * DWORD_LENGTH]
+ 00000822  81 C7 F4292244    1		add EDI, 0f4292244h
+ 00000828  03 C7	     1		add EAX, EDI
+ 0000082A  8B F8	     2		mov EDI, EAX
+ 0000082C  C1 C7 06	     2		rol EDI, S41
+ 0000082F  8B C7	     1		mov EAX, EDI
+ 00000831  03 C3	     1		add EAX, EBX
 					II EDX, EAX, EBX, ECX, [ESI + 7 * DWORD_LENGTH], S42, 0432aff97h ; /* 50 */
- 000007BC  8B F9	     2		mov EDI, ECX
- 000007BE  F7 D7	     2		not EDI
- 000007C0  0B F8	     2		or EDI, EAX
- 000007C2  33 FB	     2		xor EDI, EBX
- 000007C4  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
- 000007C7  81 C7 432AFF97    1		add EDI, 0432aff97h
- 000007CD  03 D7	     1		add EDX, EDI
- 000007CF  8B FA	     2		mov EDI, EDX
- 000007D1  C1 C7 0A	     2		rol EDI, S42
- 000007D4  8B D7	     1		mov EDX, EDI
- 000007D6  03 D0	     1		add EDX, EAX
+ 00000833  8B F9	     2		mov EDI, ECX
+ 00000835  F7 D7	     2		not EDI
+ 00000837  0B F8	     2		or EDI, EAX
+ 00000839  33 FB	     2		xor EDI, EBX
+ 0000083B  03 7E 1C	     1		add EDI, [ESI + 7 * DWORD_LENGTH]
+ 0000083E  81 C7 432AFF97    1		add EDI, 0432aff97h
+ 00000844  03 D7	     1		add EDX, EDI
+ 00000846  8B FA	     2		mov EDI, EDX
+ 00000848  C1 C7 0A	     2		rol EDI, S42
+ 0000084B  8B D7	     1		mov EDX, EDI
+ 0000084D  03 D0	     1		add EDX, EAX
 					II ECX, EDX, EAX, EBX, [ESI +14 * DWORD_LENGTH], S43, 0ab9423a7h ; /* 51 */
- 000007D8  8B FB	     2		mov EDI, EBX
- 000007DA  F7 D7	     2		not EDI
- 000007DC  0B FA	     2		or EDI, EDX
- 000007DE  33 F8	     2		xor EDI, EAX
- 000007E0  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
- 000007E3  81 C7 AB9423A7    1		add EDI, 0ab9423a7h
- 000007E9  03 CF	     1		add ECX, EDI
- 000007EB  8B F9	     2		mov EDI, ECX
- 000007ED  C1 C7 0F	     2		rol EDI, S43
- 000007F0  8B CF	     1		mov ECX, EDI
- 000007F2  03 CA	     1		add ECX, EDX
+ 0000084F  8B FB	     2		mov EDI, EBX
+ 00000851  F7 D7	     2		not EDI
+ 00000853  0B FA	     2		or EDI, EDX
+ 00000855  33 F8	     2		xor EDI, EAX
+ 00000857  03 7E 38	     1		add EDI, [ESI +14 * DWORD_LENGTH]
+ 0000085A  81 C7 AB9423A7    1		add EDI, 0ab9423a7h
+ 00000860  03 CF	     1		add ECX, EDI
+ 00000862  8B F9	     2		mov EDI, ECX
+ 00000864  C1 C7 0F	     2		rol EDI, S43
+ 00000867  8B CF	     1		mov ECX, EDI
+ 00000869  03 CA	     1		add ECX, EDX
 					II EBX, ECX, EDX, EAX, [ESI + 5 * DWORD_LENGTH], S44, 0fc93a039h ; /* 52 */
- 000007F4  8B F8	     2		mov EDI, EAX
- 000007F6  F7 D7	     2		not EDI
- 000007F8  0B F9	     2		or EDI, ECX
- 000007FA  33 FA	     2		xor EDI, EDX
- 000007FC  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
- 000007FF  81 C7 FC93A039    1		add EDI, 0fc93a039h
- 00000805  03 DF	     1		add EBX, EDI
- 00000807  8B FB	     2		mov EDI, EBX
- 00000809  C1 C7 15	     2		rol EDI, S44
- 0000080C  8B DF	     1		mov EBX, EDI
- 0000080E  03 D9	     1		add EBX, ECX
+ 0000086B  8B F8	     2		mov EDI, EAX
+ 0000086D  F7 D7	     2		not EDI
+ 0000086F  0B F9	     2		or EDI, ECX
+ 00000871  33 FA	     2		xor EDI, EDX
+ 00000873  03 7E 14	     1		add EDI, [ESI + 5 * DWORD_LENGTH]
+ 00000876  81 C7 FC93A039    1		add EDI, 0fc93a039h
+ 0000087C  03 DF	     1		add EBX, EDI
+ 0000087E  8B FB	     2		mov EDI, EBX
+ 00000880  C1 C7 15	     2		rol EDI, S44
+ 00000883  8B DF	     1		mov EBX, EDI
+ 00000885  03 D9	     1		add EBX, ECX
 					II EAX, EBX, ECX, EDX, [ESI +12 * DWORD_LENGTH], S41, 0655b59c3h ; /* 53 */
- 00000810  8B FA	     2		mov EDI, EDX
- 00000812  F7 D7	     2		not EDI
- 00000814  0B FB	     2		or EDI, EBX
- 00000816  33 F9	     2		xor EDI, ECX
- 00000818  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
- 0000081B  81 C7 655B59C3    1		add EDI, 0655b59c3h
- 00000821  03 C7	     1		add EAX, EDI
- 00000823  8B F8	     2		mov EDI, EAX
- 00000825  C1 C7 06	     2		rol EDI, S41
- 00000828  8B C7	     1		mov EAX, EDI
- 0000082A  03 C3	     1		add EAX, EBX
+ 00000887  8B FA	     2		mov EDI, EDX
+ 00000889  F7 D7	     2		not EDI
+ 0000088B  0B FB	     2		or EDI, EBX
+ 0000088D  33 F9	     2		xor EDI, ECX
+ 0000088F  03 7E 30	     1		add EDI, [ESI +12 * DWORD_LENGTH]
+ 00000892  81 C7 655B59C3    1		add EDI, 0655b59c3h
+ 00000898  03 C7	     1		add EAX, EDI
+ 0000089A  8B F8	     2		mov EDI, EAX
+ 0000089C  C1 C7 06	     2		rol EDI, S41
+ 0000089F  8B C7	     1		mov EAX, EDI
+ 000008A1  03 C3	     1		add EAX, EBX
 					II EDX, EAX, EBX, ECX, [ESI + 3 * DWORD_LENGTH], S42, 08f0ccc92h ; /* 54 */
- 0000082C  8B F9	     2		mov EDI, ECX
- 0000082E  F7 D7	     2		not EDI
- 00000830  0B F8	     2		or EDI, EAX
- 00000832  33 FB	     2		xor EDI, EBX
- 00000834  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
- 00000837  81 C7 8F0CCC92    1		add EDI, 08f0ccc92h
- 0000083D  03 D7	     1		add EDX, EDI
- 0000083F  8B FA	     2		mov EDI, EDX
- 00000841  C1 C7 0A	     2		rol EDI, S42
- 00000844  8B D7	     1		mov EDX, EDI
- 00000846  03 D0	     1		add EDX, EAX
+ 000008A3  8B F9	     2		mov EDI, ECX
+ 000008A5  F7 D7	     2		not EDI
+ 000008A7  0B F8	     2		or EDI, EAX
+ 000008A9  33 FB	     2		xor EDI, EBX
+ 000008AB  03 7E 0C	     1		add EDI, [ESI + 3 * DWORD_LENGTH]
+ 000008AE  81 C7 8F0CCC92    1		add EDI, 08f0ccc92h
+ 000008B4  03 D7	     1		add EDX, EDI
+ 000008B6  8B FA	     2		mov EDI, EDX
+ 000008B8  C1 C7 0A	     2		rol EDI, S42
+ 000008BB  8B D7	     1		mov EDX, EDI
+ 000008BD  03 D0	     1		add EDX, EAX
 					II ECX, EDX, EAX, EBX, [ESI +10 * DWORD_LENGTH], S43, 0ffeff47dh ; /* 55 */
- 00000848  8B FB	     2		mov EDI, EBX
- 0000084A  F7 D7	     2		not EDI
- 0000084C  0B FA	     2		or EDI, EDX
- 0000084E  33 F8	     2		xor EDI, EAX
- 00000850  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
- 00000853  81 C7 FFEFF47D    1		add EDI, 0ffeff47dh
- 00000859  03 CF	     1		add ECX, EDI
- 0000085B  8B F9	     2		mov EDI, ECX
- 0000085D  C1 C7 0F	     2		rol EDI, S43
- 00000860  8B CF	     1		mov ECX, EDI
- 00000862  03 CA	     1		add ECX, EDX
+ 000008BF  8B FB	     2		mov EDI, EBX
+ 000008C1  F7 D7	     2		not EDI
+ 000008C3  0B FA	     2		or EDI, EDX
+ 000008C5  33 F8	     2		xor EDI, EAX
+ 000008C7  03 7E 28	     1		add EDI, [ESI +10 * DWORD_LENGTH]
+ 000008CA  81 C7 FFEFF47D    1		add EDI, 0ffeff47dh
+ 000008D0  03 CF	     1		add ECX, EDI
+ 000008D2  8B F9	     2		mov EDI, ECX
+ 000008D4  C1 C7 0F	     2		rol EDI, S43
+ 000008D7  8B CF	     1		mov ECX, EDI
+ 000008D9  03 CA	     1		add ECX, EDX
 					II EBX, ECX, EDX, EAX, [ESI + 1 * DWORD_LENGTH], S44, 085845dd1h ; /* 56 */
- 00000864  8B F8	     2		mov EDI, EAX
- 00000866  F7 D7	     2		not EDI
- 00000868  0B F9	     2		or EDI, ECX
- 0000086A  33 FA	     2		xor EDI, EDX
- 0000086C  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
- 0000086F  81 C7 85845DD1    1		add EDI, 085845dd1h
- 00000875  03 DF	     1		add EBX, EDI
- 00000877  8B FB	     2		mov EDI, EBX
- 00000879  C1 C7 15	     2		rol EDI, S44
- 0000087C  8B DF	     1		mov EBX, EDI
- 0000087E  03 D9	     1		add EBX, ECX
+ 000008DB  8B F8	     2		mov EDI, EAX
+ 000008DD  F7 D7	     2		not EDI
+ 000008DF  0B F9	     2		or EDI, ECX
+ 000008E1  33 FA	     2		xor EDI, EDX
+ 000008E3  03 7E 04	     1		add EDI, [ESI + 1 * DWORD_LENGTH]
+ 000008E6  81 C7 85845DD1    1		add EDI, 085845dd1h
+ 000008EC  03 DF	     1		add EBX, EDI
+ 000008EE  8B FB	     2		mov EDI, EBX
+ 000008F0  C1 C7 15	     2		rol EDI, S44
+ 000008F3  8B DF	     1		mov EBX, EDI
+ 000008F5  03 D9	     1		add EBX, ECX
 					II EAX, EBX, ECX, EDX, [ESI + 8 * DWORD_LENGTH], S41, 06fa87e4fh ; /* 57 */
- 00000880  8B FA	     2		mov EDI, EDX
- 00000882  F7 D7	     2		not EDI
- 00000884  0B FB	     2		or EDI, EBX
- 00000886  33 F9	     2		xor EDI, ECX
- 00000888  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
- 0000088B  81 C7 6FA87E4F    1		add EDI, 06fa87e4fh
- 00000891  03 C7	     1		add EAX, EDI
- 00000893  8B F8	     2		mov EDI, EAX
- 00000895  C1 C7 06	     2		rol EDI, S41
- 00000898  8B C7	     1		mov EAX, EDI
- 0000089A  03 C3	     1		add EAX, EBX
+ 000008F7  8B FA	     2		mov EDI, EDX
+ 000008F9  F7 D7	     2		not EDI
+ 000008FB  0B FB	     2		or EDI, EBX
+ 000008FD  33 F9	     2		xor EDI, ECX
+ 000008FF  03 7E 20	     1		add EDI, [ESI + 8 * DWORD_LENGTH]
+ 00000902  81 C7 6FA87E4F    1		add EDI, 06fa87e4fh
+ 00000908  03 C7	     1		add EAX, EDI
+ 0000090A  8B F8	     2		mov EDI, EAX
+ 0000090C  C1 C7 06	     2		rol EDI, S41
+ 0000090F  8B C7	     1		mov EAX, EDI
+ 00000911  03 C3	     1		add EAX, EBX
 					II EDX, EAX, EBX, ECX, [ESI +15 * DWORD_LENGTH], S42, 0fe2ce6e0h ; /* 58 */
- 0000089C  8B F9	     2		mov EDI, ECX
- 0000089E  F7 D7	     2		not EDI
- 000008A0  0B F8	     2		or EDI, EAX
- 000008A2  33 FB	     2		xor EDI, EBX
- 000008A4  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
- 000008A7  81 C7 FE2CE6E0    1		add EDI, 0fe2ce6e0h
- 000008AD  03 D7	     1		add EDX, EDI
- 000008AF  8B FA	     2		mov EDI, EDX
- 000008B1  C1 C7 0A	     2		rol EDI, S42
- 000008B4  8B D7	     1		mov EDX, EDI
- 000008B6  03 D0	     1		add EDX, EAX
+ 00000913  8B F9	     2		mov EDI, ECX
+ 00000915  F7 D7	     2		not EDI
+ 00000917  0B F8	     2		or EDI, EAX
+ 00000919  33 FB	     2		xor EDI, EBX
+ 0000091B  03 7E 3C	     1		add EDI, [ESI +15 * DWORD_LENGTH]
+ 0000091E  81 C7 FE2CE6E0    1		add EDI, 0fe2ce6e0h
+ 00000924  03 D7	     1		add EDX, EDI
+ 00000926  8B FA	     2		mov EDI, EDX
+ 00000928  C1 C7 0A	     2		rol EDI, S42
+ 0000092B  8B D7	     1		mov EDX, EDI
+ 0000092D  03 D0	     1		add EDX, EAX
 					II ECX, EDX, EAX, EBX, [ESI + 6 * DWORD_LENGTH], S43, 0a3014314h ; /* 59 */
- 000008B8  8B FB	     2		mov EDI, EBX
- 000008BA  F7 D7	     2		not EDI
- 000008BC  0B FA	     2		or EDI, EDX
- 000008BE  33 F8	     2		xor EDI, EAX
- 000008C0  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
- 000008C3  81 C7 A3014314    1		add EDI, 0a3014314h
- 000008C9  03 CF	     1		add ECX, EDI
- 000008CB  8B F9	     2		mov EDI, ECX
- 000008CD  C1 C7 0F	     2		rol EDI, S43
- 000008D0  8B CF	     1		mov ECX, EDI
- 000008D2  03 CA	     1		add ECX, EDX
+ 0000092F  8B FB	     2		mov EDI, EBX
+ 00000931  F7 D7	     2		not EDI
+ 00000933  0B FA	     2		or EDI, EDX
+ 00000935  33 F8	     2		xor EDI, EAX
+ 00000937  03 7E 18	     1		add EDI, [ESI + 6 * DWORD_LENGTH]
+ 0000093A  81 C7 A3014314    1		add EDI, 0a3014314h
+ 00000940  03 CF	     1		add ECX, EDI
+ 00000942  8B F9	     2		mov EDI, ECX
+ 00000944  C1 C7 0F	     2		rol EDI, S43
+ 00000947  8B CF	     1		mov ECX, EDI
+ 00000949  03 CA	     1		add ECX, EDX
 					II EBX, ECX, EDX, EAX, [ESI +13 * DWORD_LENGTH], S44, 04e0811a1h ; /* 60 */
- 000008D4  8B F8	     2		mov EDI, EAX
- 000008D6  F7 D7	     2		not EDI
- 000008D8  0B F9	     2		or EDI, ECX
- 000008DA  33 FA	     2		xor EDI, EDX
- 000008DC  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
- 000008DF  81 C7 4E0811A1    1		add EDI, 04e0811a1h
- 000008E5  03 DF	     1		add EBX, EDI
- 000008E7  8B FB	     2		mov EDI, EBX
- 000008E9  C1 C7 15	     2		rol EDI, S44
- 000008EC  8B DF	     1		mov EBX, EDI
- 000008EE  03 D9	     1		add EBX, ECX
+ 0000094B  8B F8	     2		mov EDI, EAX
+ 0000094D  F7 D7	     2		not EDI
+ 0000094F  0B F9	     2		or EDI, ECX
+ 00000951  33 FA	     2		xor EDI, EDX
+ 00000953  03 7E 34	     1		add EDI, [ESI +13 * DWORD_LENGTH]
+ 00000956  81 C7 4E0811A1    1		add EDI, 04e0811a1h
+ 0000095C  03 DF	     1		add EBX, EDI
+ 0000095E  8B FB	     2		mov EDI, EBX
+ 00000960  C1 C7 15	     2		rol EDI, S44
+ 00000963  8B DF	     1		mov EBX, EDI
+ 00000965  03 D9	     1		add EBX, ECX
 					II EAX, EBX, ECX, EDX, [ESI + 4 * DWORD_LENGTH], S41, 0f7537e82h ; /* 61 */
- 000008F0  8B FA	     2		mov EDI, EDX
- 000008F2  F7 D7	     2		not EDI
- 000008F4  0B FB	     2		or EDI, EBX
- 000008F6  33 F9	     2		xor EDI, ECX
- 000008F8  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
- 000008FB  81 C7 F7537E82    1		add EDI, 0f7537e82h
- 00000901  03 C7	     1		add EAX, EDI
- 00000903  8B F8	     2		mov EDI, EAX
- 00000905  C1 C7 06	     2		rol EDI, S41
- 00000908  8B C7	     1		mov EAX, EDI
- 0000090A  03 C3	     1		add EAX, EBX
+ 00000967  8B FA	     2		mov EDI, EDX
+ 00000969  F7 D7	     2		not EDI
+ 0000096B  0B FB	     2		or EDI, EBX
+ 0000096D  33 F9	     2		xor EDI, ECX
+ 0000096F  03 7E 10	     1		add EDI, [ESI + 4 * DWORD_LENGTH]
+ 00000972  81 C7 F7537E82    1		add EDI, 0f7537e82h
+ 00000978  03 C7	     1		add EAX, EDI
+ 0000097A  8B F8	     2		mov EDI, EAX
+ 0000097C  C1 C7 06	     2		rol EDI, S41
+ 0000097F  8B C7	     1		mov EAX, EDI
+ 00000981  03 C3	     1		add EAX, EBX
 					II EDX, EAX, EBX, ECX, [ESI +11 * DWORD_LENGTH], S42, 0bd3af235h ; /* 62 */
- 0000090C  8B F9	     2		mov EDI, ECX
- 0000090E  F7 D7	     2		not EDI
- 00000910  0B F8	     2		or EDI, EAX
- 00000912  33 FB	     2		xor EDI, EBX
- 00000914  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
- 00000917  81 C7 BD3AF235    1		add EDI, 0bd3af235h
- 0000091D  03 D7	     1		add EDX, EDI
- 0000091F  8B FA	     2		mov EDI, EDX
- 00000921  C1 C7 0A	     2		rol EDI, S42
- 00000924  8B D7	     1		mov EDX, EDI
- 00000926  03 D0	     1		add EDX, EAX
+ 00000983  8B F9	     2		mov EDI, ECX
+ 00000985  F7 D7	     2		not EDI
+ 00000987  0B F8	     2		or EDI, EAX
+ 00000989  33 FB	     2		xor EDI, EBX
+ 0000098B  03 7E 2C	     1		add EDI, [ESI +11 * DWORD_LENGTH]
+ 0000098E  81 C7 BD3AF235    1		add EDI, 0bd3af235h
+ 00000994  03 D7	     1		add EDX, EDI
+ 00000996  8B FA	     2		mov EDI, EDX
+ 00000998  C1 C7 0A	     2		rol EDI, S42
+ 0000099B  8B D7	     1		mov EDX, EDI
+ 0000099D  03 D0	     1		add EDX, EAX
 					II ECX, EDX, EAX, EBX, [ESI + 2 * DWORD_LENGTH], S43, 02ad7d2bbh ; /* 63 */
- 00000928  8B FB	     2		mov EDI, EBX
- 0000092A  F7 D7	     2		not EDI
- 0000092C  0B FA	     2		or EDI, EDX
- 0000092E  33 F8	     2		xor EDI, EAX
- 00000930  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
- 00000933  81 C7 2AD7D2BB    1		add EDI, 02ad7d2bbh
- 00000939  03 CF	     1		add ECX, EDI
- 0000093B  8B F9	     2		mov EDI, ECX
- 0000093D  C1 C7 0F	     2		rol EDI, S43
- 00000940  8B CF	     1		mov ECX, EDI
- 00000942  03 CA	     1		add ECX, EDX
+ 0000099F  8B FB	     2		mov EDI, EBX
+ 000009A1  F7 D7	     2		not EDI
+ 000009A3  0B FA	     2		or EDI, EDX
+ 000009A5  33 F8	     2		xor EDI, EAX
+ 000009A7  03 7E 08	     1		add EDI, [ESI + 2 * DWORD_LENGTH]
+ 000009AA  81 C7 2AD7D2BB    1		add EDI, 02ad7d2bbh
+ 000009B0  03 CF	     1		add ECX, EDI
+ 000009B2  8B F9	     2		mov EDI, ECX
+ 000009B4  C1 C7 0F	     2		rol EDI, S43
+ 000009B7  8B CF	     1		mov ECX, EDI
+ 000009B9  03 CA	     1		add ECX, EDX
 					II EBX, ECX, EDX, EAX, [ESI + 9 * DWORD_LENGTH], S44, 0eb86d391h ; /* 64 */
- 00000944  8B F8	     2		mov EDI, EAX
- 00000946  F7 D7	     2		not EDI
- 00000948  0B F9	     2		or EDI, ECX
- 0000094A  33 FA	     2		xor EDI, EDX
- 0000094C  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
- 0000094F  81 C7 EB86D391    1		add EDI, 0eb86d391h
- 00000955  03 DF	     1		add EBX, EDI
- 00000957  8B FB	     2		mov EDI, EBX
- 00000959  C1 C7 15	     2		rol EDI, S44
- 0000095C  8B DF	     1		mov EBX, EDI
- 0000095E  03 D9	     1		add EBX, ECX
+ 000009BB  8B F8	     2		mov EDI, EAX
+ 000009BD  F7 D7	     2		not EDI
+ 000009BF  0B F9	     2		or EDI, ECX
+ 000009C1  33 FA	     2		xor EDI, EDX
+ 000009C3  03 7E 24	     1		add EDI, [ESI + 9 * DWORD_LENGTH]
+ 000009C6  81 C7 EB86D391    1		add EDI, 0eb86d391h
+ 000009CC  03 DF	     1		add EBX, EDI
+ 000009CE  8B FB	     2		mov EDI, EBX
+ 000009D0  C1 C7 15	     2		rol EDI, S44
+ 000009D3  8B DF	     1		mov EBX, EDI
+ 000009D5  03 D9	     1		add EBX, ECX
 					
 					; Zapamietanie wynikow w tablicy wskazywanej przez EDI (state)
- 00000960  5F				pop EDI
- 00000961  01 07			add [EDI], EAX
- 00000963  01 5F 04			add [EDI + 1 * DWORD_LENGTH], EBX
- 00000966  01 4F 08			add [EDI + 2 * DWORD_LENGTH], ECX
- 00000969  01 57 0C			add [EDI + 3 * DWORD_LENGTH], EDX
+ 000009D7  5F				pop EDI
+ 000009D8  01 07			add [EDI], EAX
+ 000009DA  01 5F 04			add [EDI + 1 * DWORD_LENGTH], EBX
+ 000009DD  01 4F 08			add [EDI + 2 * DWORD_LENGTH], ECX
+ 000009E0  01 57 0C			add [EDI + 3 * DWORD_LENGTH], EDX
 					
 				ret
- 0000096F			MD5Transform ENDP
+ 000009E6			MD5Transform ENDP
 				;###########################################################
 				; koniec MD5Transform
 				;###########################################################
 				END DllEntry
 
 				; mov EBX, offset (MD5_CTX ptr [EBX]).state
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 14:25:00
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 23:29:08
 .\md5.asm						     Symbols 2 - 1
 
 
@@ -8569,8 +8615,8 @@ Segments and Groups:
                 N a m e                 Size     Length   Align   Combine Class
 
 FLAT . . . . . . . . . . . . . .	GROUP
-_DATA  . . . . . . . . . . . . .	32 Bit	 00001040 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 0000096F Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00001050 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000009E6 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -9434,23 +9480,23 @@ LockWindowUpdate . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 LockWorkStation  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 LookupIconIdFromDirectoryEx  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 LookupIconIdFromDirectory  . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-MD5Final . . . . . . . . . . . .	P Near	 00000184 _TEXT	Length= 00000072 Public STDCALL
+MD5Final . . . . . . . . . . . .	P Near	 000001FB _TEXT	Length= 00000072 Public STDCALL
   digest . . . . . . . . . . . .	DWord	 bp + 00000008
   context  . . . . . . . . . . .	DWord	 bp + 0000000C
   index  . . . . . . . . . . . .	DWord	 bp - 00000004
   padLen . . . . . . . . . . . .	DWord	 bp - 00000008
   bits . . . . . . . . . . . . .	DWord	 bp - 00000028
-MD5Init  . . . . . . . . . . . .	P Near	 00000097 _TEXT	Length= 00000035 Public STDCALL
+MD5Init  . . . . . . . . . . . .	P Near	 0000010E _TEXT	Length= 00000035 Public STDCALL
   context  . . . . . . . . . . .	DWord	 bp + 00000008
-MD5Transform . . . . . . . . . .	P Near	 000001F6 _TEXT	Length= 00000779 Public STDCALL
-MD5Update  . . . . . . . . . . .	P Near	 000000CC _TEXT	Length= 000000B8 Public STDCALL
+MD5Transform . . . . . . . . . .	P Near	 0000026D _TEXT	Length= 00000779 Public STDCALL
+MD5Update  . . . . . . . . . . .	P Near	 00000143 _TEXT	Length= 000000B8 Public STDCALL
   context  . . . . . . . . . . .	DWord	 bp + 00000008
   input  . . . . . . . . . . . .	DWord	 bp + 0000000C
   inputLen . . . . . . . . . . .	DWord	 bp + 00000010
   index  . . . . . . . . . . . .	DWord	 bp - 00000004
   partLen  . . . . . . . . . . .	DWord	 bp - 00000008
-  petla  . . . . . . . . . . . .	L Near	 0000012C _TEXT	
-  koniec_petli . . . . . . . . .	L Near	 0000014A _TEXT	
+  petla  . . . . . . . . . . . .	L Near	 000001A3 _TEXT	
+  koniec_petli . . . . . . . . .	L Near	 000001C1 _TEXT	
 MD5_meset  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MapDialogRect  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MapUserPhysicalPagesScatter  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -9793,6 +9839,14 @@ TerminateProcess . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 TerminateThread  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Thread32First  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Thread32Next . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ThreadCountMD5Body . . . . . . .	P Near	 00000097 _TEXT	Length= 00000038 Public STDCALL
+  Param  . . . . . . . . . . . .	DWord	 bp + 00000008
+  filename . . . . . . . . . . .	DWord	 bp - 00000004
+  MD5  . . . . . . . . . . . . .	DWord	 bp - 00000008
+ThreadCountMD5 . . . . . . . . .	P Near	 000000CF _TEXT	Length= 0000003F Public STDCALL
+  filename . . . . . . . . . . .	DWord	 bp + 00000008
+  MD5  . . . . . . . . . . . . .	DWord	 bp + 0000000C
+  thread . . . . . . . . . . . .	DWord	 bp + 00000010
 TileChildWindows . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 TileWindows  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 TlsAlloc . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -28726,6 +28780,8 @@ TYSPEC_PACKAGENAME . . . . . . .	Number	 00000008h
 TYSPEC_PROGID  . . . . . . . . .	Number	 00000003h   
 TYSPEC_TYPELIB . . . . . . . . .	Number	 00000005h   
 TabbedTextOut  . . . . . . . . .	Text   	 TabbedTextOutA
+Tekst  . . . . . . . . . . . . .	Byte	 0000104C _DATA	
+ThreadParam  . . . . . . . . . .	DWord	 00001040 _DATA	
 TlbNamePath  . . . . . . . . . .	Number	 00000002h   
 TokenDefaultDacl . . . . . . . .	Number	 00000006h   
 TokenGroups  . . . . . . . . . .	Number	 00000002h   
