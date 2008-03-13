@@ -29,6 +29,7 @@
 //#undef UNICODE
 #include <windows.h>
 #include <windowsx.h>
+#include <ShlObj.h>
 #include <commctrl.h>
 #include <Commdlg.h>
 

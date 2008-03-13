@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-
+extern HWND hwndEdit;
 TKontener * glowa_kontener, *ogon_kontener ;
 HANDLE ThreadSzukaj, ThreadMD5, Semafor;
 const int MAKSYMALNA_ILOSC_ZADAN = 256;
@@ -62,6 +62,7 @@ int search (wchar_t* biezacykat, HANDLE hFile) {
 				wcsncpy(nowasciezka, biezacykat, MAX_PATH);
 				wcscat(nowasciezka,L"\\");
 				wcscat(nowasciezka,finddata.cFileName);
+				SendMessage(hwndEdit,WM_SETTEXT,NULL,(LPARAM)nowasciezka);
 				search(nowasciezka, hFile);
 				delete [] nowasciezka;
 			}
@@ -230,7 +231,7 @@ DWORD WINAPI LiczMd5( LPVOID lpParam ) {
 DWORD WINAPI WatekSzukaj( LPVOID lpParam ) {
 	HANDLE hPlik = INVALID_HANDLE_VALUE;
 	DWORD ThreadID = 0;
-	hPlik = CreateFile((*(TOpcje*)lpParam).Raport, GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
+	hPlik = CreateFile(L"c:\\same nazwy plikow.txt", GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
 	if (hPlik == INVALID_HANDLE_VALUE) {
 		return 1;
 	}
@@ -315,7 +316,7 @@ int dodaj_zadanie(TElement *element) {
 	}
 	return 0;
 }
-
+/*
 int generuj_raport1(TOpcje *opcje){
 	HANDLE hPlik = INVALID_HANDLE_VALUE;
 	wchar_t WMD5[32+1];  // MD5 ma 16 bajtow, 32 znaki (char albo wchar_t)
@@ -354,7 +355,7 @@ int generuj_raport1(TOpcje *opcje){
 	CloseHandle(hPlik);
 	return 0;
 }
-
+*/
 
 int generuj_raport(TOpcje *opcje){
 	HANDLE hPlik = INVALID_HANDLE_VALUE;
@@ -366,8 +367,8 @@ int generuj_raport(TOpcje *opcje){
 	unsigned long long  int straty = 0;
 	
 	WMD5[32] = (WCHAR) 0; // dodaj zero na koniec
-	//hPlik = CreateFile((*(TOpcje*)lpParam).Raport, GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
-	hPlik = CreateFile(L"c:\\duplikaty.txt", GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
+	hPlik = CreateFile(opcje->Raport, GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
+	//hPlik = CreateFile(L"c:\\duplikaty.txt", GENERIC_WRITE,  0, NULL, CREATE_ALWAYS, 0, NULL);			
 	if (hPlik == INVALID_HANDLE_VALUE) {
 		return 1;
 	}

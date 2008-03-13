@@ -50,6 +50,7 @@ BEGIN
     POPUP "Options"
     BEGIN
         MENUITEM "Folder list",                 ID_OPTIONS_FOLDERLIST
+        MENUITEM "Raport file",                 ID_OPTIONS_RAPORTFILE
     END
     POPUP "&Help"
     BEGIN
