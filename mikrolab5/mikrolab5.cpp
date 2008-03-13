@@ -15,8 +15,9 @@ int TextLength = 0;
 // Global Variables:
 HINSTANCE hInst;	// current instance
 HWND hWnd;    // handle do okna
-HWND hwndEdit, hwndTV;									// pole edit na glownej formatce
-int EditID = 0;
+HWND hwndEdit, hwndTV;		
+wchar_t *edittext ; // zawartosc pola edit
+int EditID = 0;// pole edit na glownej formatce
 WCHAR NazwaPliku [MAX_PATH+1];				// nazwa pliku typu WCHAR *
 
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
@@ -50,19 +51,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	MyRegisterClass(hInstance);
 
 
-	// przeniesc do miejsca - odczytywanie z okienka
-	//wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\documents");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów\\Programowanie - kompilatory, debuggery, serwery, narzêdzia\\delphi 7\\Install\\Delphi7.By.HeCTOr.FWBz\\program files\\Borland\\Delphi7\\Demos\\Corba\\Idl2Pas\\EJB\\euroconverter\\Java\\classes\\Generated Source\\currencyconverter");
-	
-
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\Documents and Settings");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Documents");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"e:\\mp3");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
-
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"d:\\Instalki programów");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"l:");
-	wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
+	//wcscpy(WybraneOpcje.PodstawowaSciezka,L"c:\\asm51");	
 
 	wcscpy(WybraneOpcje.Raport, L"c:\\raport.txt");
 
@@ -172,13 +161,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	TV_INSERTSTRUCT TV_insert;
 	TV_ITEM    item;
-
+	// dla dodawania folderow;
+	wchar_t * filename, *path;
+	int i,j;
+	BROWSEINFO browseinfo;
+	LPCITEMIDLIST pidlRoot;
+	OPENFILENAMEW savefilename;
 	
-	TV_insert.hParent = 0;
+	
+	
+/*	TV_insert.hParent = 0;
 	TV_insert.hInsertAfter = TVI_FIRST;
 	TV_insert.item = item;
 
-
+*/
 
 	switch (message)
 	{
@@ -210,9 +206,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SendMessage(hwndTV,TVM_INSERTITEM,0,(LPARAM)&TV_insert);
 		//InitTreeViewImageLists(hwndTV);
 		Edit_Enable(hwndEdit,false);
-		SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)L"Lista wybranych folderów:\r\n");
-		SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)L"456:\r\n");
-        SetFocus (hwndEdit);
+		
+		SetFocus (hwndEdit);
+		edittext = new wchar_t [MAX_PATH*MAX_PATH];
+		wcscpy(edittext,L"Chosen folders:\r\n");
+		SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)edittext);
 		break;
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
@@ -230,6 +228,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		// nowe szukanie
 		case IDM_FILE_NEWSEARCH:
+			TerminateThread(ThreadMD5, 0);
+			TerminateThread(ThreadSzukaj,0);
+			kasuj_liste_kontenerow();
+			wcscpy(edittext,L"Chosen folders:\r\n");
+			SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)edittext);
+
+
 			/*// inicjalizacja struktury do otwierania pliku
 			OPENFILENAME opfn;
 			ZeroMemory(&opfn,sizeof(opfn));
@@ -268,61 +273,94 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break; // IDM_FILE_NEWSEARCH
 
 		case ID_OPTIONS_FOLDERLIST:
+			// dodawanie sciezek do pola edit
+			filename = new wchar_t [MAX_PATH];  
+			path = new wchar_t [MAX_PATH];  
+			browseinfo.hwndOwner=hWnd;
+			browseinfo.iImage = 0;
+			browseinfo.lpszTitle = L"Choose a folder";
+			browseinfo.pszDisplayName = filename;
+			browseinfo.ulFlags = 9;
+			browseinfo.lParam = 0;
+			browseinfo.lpfn = 0;
+			browseinfo.pidlRoot = 0;
+			pidlRoot = SHBrowseForFolder(&browseinfo);
+			SHGetPathFromIDList(pidlRoot, path);
+			if (!*path == (wchar_t )0) {
+				wcscat(edittext,path);
+				wcscat(edittext,L"\r\n");
+				SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)edittext);
+			}
+			delete [] filename;
+			delete [] path;
+
+		break;
+
+	
+		case ID_FILE_COUNTMD5:
+			generuj_raport(&WybraneOpcje);
+			kasuj_liste_kontenerow();
+
+
+		break;
+
+		case ID_OPTIONS_RAPORTFILE:
+			memset(&savefilename,0,sizeof(OPENFILENAME));
+			savefilename.lStructSize = sizeof(OPENFILENAME);
+			savefilename.hwndOwner = hWnd;
+			savefilename.hInstance = hInst;
+			savefilename.lpstrFilter = L"Txt Files\0*.txt\0";
+			savefilename.nMaxFile = MAX_PATH;
+			savefilename.lpstrFile = WybraneOpcje.Raport;
+			savefilename.lpstrTitle = L"Choose one file";
+			savefilename.Flags = OFN_EXPLORER || OFN_LONGNAMES;
+			
+			GetSaveFileName(&savefilename);
 
 
 		break;
 
 		case ID_FILE_FINDDUPLICATES:
-
-
-		break;
-
-
 		
-		case ID_FILE_RAPORT:
-			generuj_raport(&WybraneOpcje);
+//			char MD5[16];
+//			CountMD5(L"c:\\asm51\\film.avi",MD5);
+//			char * sumakontrolna;
+//			sumakontrolna = new char [33];
+//			sumakontrolna[32] = 0;
+//			MD5ToAStr(sumakontrolna,MD5);
+//			MessageBoxA(NULL,sumakontrolna,"tekst",0);
+//			delete [] sumakontrolna;
+
+
 			kasuj_liste_kontenerow();
-
-		break;
-
-		case ID_FILE_COUNTMD5:
-			char MD5[16];
-			//CountMD5(L"c:\\asm51.zip",MD5);
-			/*TKontener *k;
-			TElement *e;
-			for (int j = 0; j < 500000; j++){
-				k = new TKontener ;
-				e = new TElement ;
+			i = 17;  // poczatek folderow
+			if (edittext[i] == wchar_t (0)) {
+				MessageBox(hWnd,L"Add at least 1 folder to search",L"Error",0);
+				break;
 
 
 			}
-*/
+			while (edittext[i] != wchar_t (0)) {
+				j = 0;
+				while ((edittext[i] != wchar_t(13)) && (edittext[i]!= wchar_t (0)) )  {//enter
+					WybraneOpcje.PodstawowaSciezka[j] = edittext[i];
+					i++;
+					j++;
+				}
+				// sciezki typu c:\ koncza sie na \ - trzeba usunac
+				if (j && WybraneOpcje.PodstawowaSciezka[j-1] == wchar_t (92))
+					j--;
+				WybraneOpcje.PodstawowaSciezka[j] = wchar_t (0);
+				i++;
+				i++;
+				start(WybraneOpcje);
 
-			//CountMD5(L"c:\\asm51\\film.avi",MD5);
-
-			kasuj_liste_kontenerow();
-			start(WybraneOpcje);
-			//znajdz();
+		}
+		 
 			
+	
 			
 			int wynik;
-//			wynik = CountMD5(L"c:\\test.pdf", MD5);
-
-			//t1 = clock();
-			//wynik = CountMD5("c:\\film.avi", MD5);
-			//t2 = clock();
-			//t3 = t2 - t1;
-
-			char * sumakontrolna;
-			sumakontrolna = new char [33];
-			sumakontrolna[32] = 0;
-			MD5ToAStr(sumakontrolna,MD5);
-			//MessageBoxA(NULL,sumakontrolna,"tekst",0);
-
-
-			delete [] sumakontrolna;
-
-
 		break; //ID_FILE_COUNTMD5
 
 

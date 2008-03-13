@@ -1,7 +1,7 @@
 int search (wchar_t* dir, HANDLE hFile) ;
 struct TOpcje {
 	wchar_t PodstawowaSciezka [MAX_PATH];
-	wchar_t DodatkowaSciezka [MAX_PATH];
+	//wchar_t DodatkowaSciezka [MAX_PATH];
 	wchar_t Raport [MAX_PATH];
 
 };
