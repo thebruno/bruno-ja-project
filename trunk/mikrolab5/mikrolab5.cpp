@@ -13,8 +13,9 @@ TOpcje WybraneOpcje;
 void* Mem = 0;
 int TextLength = 0;
 // Global Variables:
-HINSTANCE hInst;								// current instance
-HWND hwndEdit;									// pole edit na glownej formatce
+HINSTANCE hInst;	// current instance
+HWND hWnd;    // handle do okna
+HWND hwndEdit, hwndTV;									// pole edit na glownej formatce
 int EditID = 0;
 WCHAR NazwaPliku [MAX_PATH+1];				// nazwa pliku typu WCHAR *
 
@@ -35,6 +36,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
                      LPTSTR    lpCmdLine,
                      int       nCmdShow)
 {
+	
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -113,7 +115,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance		= hInstance;
 	wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MIKROLAB5));
 	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
+	wcex.hbrBackground	= (HBRUSH)(11);
 	wcex.lpszMenuName	= MAKEINTRESOURCE(IDC_MIKROLAB5);
 	wcex.lpszClassName	= szWindowClass;
 	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -133,7 +135,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   HWND hWnd;
+
 
    hInst = hInstance; // Store instance handle in our global variable
 
@@ -168,23 +170,48 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	HDC hdc;
 	int tempH, tempW;
 
+	TV_INSERTSTRUCT TV_insert;
+	TV_ITEM    item;
+
+	
+	TV_insert.hParent = 0;
+	TV_insert.hInsertAfter = TVI_FIRST;
+	TV_insert.item = item;
+
 
 
 	switch (message)
 	{
 	// obsuga zmiany rozmiaru (trzeba modyfikowac wielkosc pola edit)
 	case WM_SIZE:
-		tempW = int(lParam);
-		tempH = tempW;
+		RECT rect;
+		tempW = tempH= int(lParam);
+		/*tempH = tempW;
 		tempH >>= 16;
-		tempW &= 0xffff;
-		MoveWindow(hwndEdit,0,0,tempW,tempH,TRUE);
+		tempW &= 0xffff;*/
+		GetClientRect(hWnd,&rect);
+		
+		MoveWindow(hwndEdit,2,2*(rect.bottom-rect.top)/3,LOWORD(tempW)-4,HIWORD(tempH)/3,TRUE);
+		MoveWindow(hwndTV,2,0,LOWORD(tempW)-4,2*HIWORD(tempH)/3,TRUE);
 		break;
 	// wykonywane 1 raz - tworzenie pola edit na ca³ym okienku
 	case WM_CREATE:
+
+		GetClientRect(hWnd,&rect);
+		InitCommonControls(); 
 		hwndEdit = CreateWindowEx(NULL,L"edit",NULL, 
 			WS_VISIBLE | WS_CHILD | WS_VSCROLL| ES_LEFT | ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL,
 			0,0,0,0,hWnd,0, hInst,NULL);
+
+		
+		hwndTV = CreateWindowEx(0,L"SysTreeView32",0,WS_VISIBLE | WS_CHILD | WS_BORDER |TVS_HASLINES, 
+			0, 0, 200,200,hWnd, (HMENU)5, hInst, NULL); 
+
+		SendMessage(hwndTV,TVM_INSERTITEM,0,(LPARAM)&TV_insert);
+		//InitTreeViewImageLists(hwndTV);
+		Edit_Enable(hwndEdit,false);
+		SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)L"Lista wybranych folderów:\r\n");
+		SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)L"456:\r\n");
         SetFocus (hwndEdit);
 		break;
 	case WM_COMMAND:
@@ -201,8 +228,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DestroyWindow(hWnd);
 			break;
 
-		// otwieranie pliku
-		case IDM_FILE_OPEN:
+		// nowe szukanie
+		case IDM_FILE_NEWSEARCH:
 			/*// inicjalizacja struktury do otwierania pliku
 			OPENFILENAME opfn;
 			ZeroMemory(&opfn,sizeof(opfn));
@@ -238,16 +265,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				SendMessageW(hwndEdit,WM_SETTEXT,NULL,(LPARAM)komunikat);
 				delete [] komunikat;
 			}*/
-			break;
+		break; // IDM_FILE_NEWSEARCH
+
+		case ID_OPTIONS_FOLDERLIST:
 
 
+		break;
 
+		case ID_FILE_FINDDUPLICATES:
+
+
+		break;
+
+
+		
 		case ID_FILE_RAPORT:
 			generuj_raport(&WybraneOpcje);
 			kasuj_liste_kontenerow();
 
 		break;
-		case ID_FILE_MD5:
+
+		case ID_FILE_COUNTMD5:
 			char MD5[16];
 			//CountMD5(L"c:\\asm51.zip",MD5);
 			/*TKontener *k;
@@ -285,7 +323,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			delete [] sumakontrolna;
 
 
-			break;
+		break; //ID_FILE_COUNTMD5
 
 
 		default:

@@ -28,6 +28,8 @@
 // Windows Header Files:
 //#undef UNICODE
 #include <windows.h>
+#include <windowsx.h>
+#include <commctrl.h>
 #include <Commdlg.h>
 
 // C RunTime Header Files
@@ -42,3 +44,4 @@
 // TODO: reference additional headers your program requires here
 #include "mlab5dll.h"
 #include "funkcje.h"
+#pragma comment(lib, "comctl32.lib")

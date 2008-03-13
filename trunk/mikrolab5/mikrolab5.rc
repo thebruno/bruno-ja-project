@@ -42,14 +42,14 @@ IDC_MIKROLAB5 MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "New search",                  IDM_FILE_OPEN
-        MENUITEM "Count MD5",                   ID_FILE_MD5
-        MENUITEM "Find duplicates",             ID_FILE_RAPORT
+        MENUITEM "New search",                  IDM_FILE_NEWSEARCH
+        MENUITEM "Count MD5",                   ID_FILE_COUNTMD5
+        MENUITEM "Find duplicates",             ID_FILE_FINDDUPLICATES
         MENUITEM "E&xit",                       IDM_EXIT
     END
     POPUP "Options"
     BEGIN
-        MENUITEM "Folder list",                 ID_POMOC_FOLDERLIST
+        MENUITEM "Folder list",                 ID_OPTIONS_FOLDERLIST
     END
     POPUP "&Help"
     BEGIN

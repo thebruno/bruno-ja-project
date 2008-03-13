@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 00:08:54
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 02:41:01
 .\md5.asm						     Page 1 - 1
 
 
@@ -1154,7 +1154,7 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 00:08:54
 				END DllEntry
 
 				; mov EBX, offset (MD5_CTX ptr [EBX]).state
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 00:08:54
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/13/08 02:41:01
 .\md5.asm						     Symbols 2 - 1
 
 
@@ -8569,7 +8569,7 @@ Segments and Groups:
                 N a m e                 Size     Length   Align   Combine Class
 
 FLAT . . . . . . . . . . . . . .	GROUP
-_DATA  . . . . . . . . . . . . .	32 Bit	 00002840 Para	  Public  'DATA'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00001040 Para	  Public  'DATA'	
 _TEXT  . . . . . . . . . . . . .	32 Bit	 0000096F Para	  Public  'CODE'	
 
 
@@ -10694,7 +10694,7 @@ BTNS_NOPREFIX  . . . . . . . . .	Number	 00000020h
 BTNS_SEP . . . . . . . . . . . .	Number	 00000001h   
 BTNS_SHOWTEXT  . . . . . . . . .	Number	 00000040h   
 BTNS_WHOLEDROPDOWN . . . . . . .	Number	 00000080h   
-BUF_SIZE . . . . . . . . . . . .	Number	 00002800h   
+BUF_SIZE . . . . . . . . . . . .	Number	 00001000h   
 BUTTON_IMAGELIST_ALIGN_BOTTOM  .	Number	 00000003h   
 BUTTON_IMAGELIST_ALIGN_CENTER  .	Number	 00000004h   
 BUTTON_IMAGELIST_ALIGN_LEFT  . .	Number	 00000000h   
@@ -21399,7 +21399,7 @@ OpenSemaphore  . . . . . . . . .	Text   	 OpenSemaphoreA
 OpenWaitableTimer  . . . . . . .	Text   	 OpenWaitableTimerA
 OpenWindowStation  . . . . . . .	Text   	 OpenWindowStationA
 OutputDebugString  . . . . . . .	Text   	 OutputDebugStringA
-PADDING  . . . . . . . . . . . .	Byte	 00002800 _DATA	
+PADDING  . . . . . . . . . . . .	Byte	 00001000 _DATA	
 PAGESETUPDLG . . . . . . . . . .	Text   	 PAGESETUPDLGA
 PAGE_EXECUTE_READWRITE . . . . .	Number	 00000040h   
 PAGE_EXECUTE_READ  . . . . . . .	Number	 00000020h   
