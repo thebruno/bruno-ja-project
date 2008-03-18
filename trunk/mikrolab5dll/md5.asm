@@ -80,7 +80,8 @@ ThreadCountMD5Body PROC uses EAX EBX, Param:DWORD
 	mov EAX, [EBX +4]
 	mov MD5, EAX
 	invoke CountMD5, filename, MD5
-	invoke MessageBoxA, NULL,MD5,ADDR Tekst,0
+	invoke MD5ToByte, ADDR MD5String, MD5
+	invoke MessageBoxA, NULL,ADDR MD5String,ADDR Tekst,0	
 	ret
 ThreadCountMD5Body ENDP
 
@@ -390,6 +391,69 @@ MD5Transform ENDP
 ;###########################################################
 ; koniec MD5Transform
 ;###########################################################
+
+
+
+
+
+
+
+;###########################################################
+; 
+;###########################################################
+MD5ToByte PROC uses ESI ECX EDI EAX, output:DWORD, input:DWORD
+	mov ESI, input
+	mov EDI, output
+	mov ECX, 0
+
+petla:
+	mov ah, byte ptr [ESI][ECX]
+	mov al, ah
+	and al, 0fh
+	ror ah, 4
+	and ah, 0fh
+	.IF ah < 10
+		add ah, 48
+	.ELSEIF
+		add ah, 55
+	.ENDIF
+	mov byte ptr [EDI][2*ECX], ah
+	
+	.IF al < 10
+		add al, 48
+	.ELSEIF
+		add al, 55
+	.ENDIF
+	mov byte ptr [EDI][2*ECX + 1], al
+	inc ECX
+	.IF ECX <16 
+		jmp petla
+	.ENDIF
+	
+
+comment %
+
+void MD5ToByte(char * output, char * input){
+	int i;
+	for (i = 0; i < 16; i++ ) {
+		output[2*i] = ((input[i]>>4) & 0x0F) < 10?  ((input[i]>>4) & 0x0F)+ 48:((input[i]>>4) & 0x0F) + 55; 
+		output[2*i+1] = (input[i] & 0x0F) < 10?  (input[i] & 0x0F)+ 48:(input[i] & 0x0F) + 55; 
+	}
+}
+%
+	ret
+MD5ToByte ENDP
+;###########################################################
+; koniec MD5ToByte
+;###########################################################
+
+
+
+
+
+
+
+
 END DllEntry
 
 ; mov EBX, offset (MD5_CTX ptr [EBX]).state

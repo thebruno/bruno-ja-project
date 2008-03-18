@@ -42,4 +42,4 @@ int generuj_raport1(struct TOpcje *opcje);
 void MD5ToWStr(wchar_t * output, char * input); //wchar_t
 void MD5ToAStr(char * output, char * input); //ansi
 int MD5Cmp(char *src1, char *src2);
-
+HTREEITEM AddItemToTree(HWND hwndTV, LPWSTR lpszItem, int nLevel);
