@@ -46,6 +46,7 @@ MD5_CTX ENDS
 CountMD5 PROTO :DWORD, :DWORD
 ThreadCountMD5 PROTO :DWORD, :DWORD, :DWORD
 ThreadCountMD5Body PROTO :DWORD
+MD5ToByte PROTO :DWORD, :DWORD
 ; pomocnicze
 MD5Init PROTO :DWORD
 MD5Update PROTO :DWORD, :DWORD, :DWORD
@@ -64,7 +65,8 @@ buffer DB BUF_SIZE dup (0)
 PADDING BYTE 80h, 63 dup (0) ; wyrownywanie
 ThreadParam DWORD 3 dup (0)  ; 12 B adres sciezki, adres 16 tab
 ; na MD5 oraz zwracany HANDLE do watku
-Tekst DB 'M','D',5,0
+Tekst DB 'M','D','5',0
+MD5String DB 17 dup (0)
 
 
 ;###########################################################
