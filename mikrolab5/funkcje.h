@@ -4,7 +4,6 @@ struct TOpcje {
 	wchar_t PodstawowaSciezka [MAX_PATH];
 	//wchar_t DodatkowaSciezka [MAX_PATH];
 	wchar_t Raport [MAX_PATH];
-
 };
 
 struct TElement;
