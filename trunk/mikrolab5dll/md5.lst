@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/18/08 01:39:14
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/18/08 17:37:01
 .\md5.asm						     Page 1 - 1
 
 
@@ -1264,7 +1264,7 @@ Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/18/08 01:39:14
 				END DllEntry
 
 				; mov EBX, offset (MD5_CTX ptr [EBX]).state
-Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/18/08 01:39:14
+Microsoft (R) Macro Assembler Version 8.00.50727.42	    03/18/08 17:37:01
 .\md5.asm						     Symbols 2 - 1
 
 
