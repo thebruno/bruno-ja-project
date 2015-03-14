@@ -1,0 +1,1 @@
+Program which helps to find files duplicates on the HDD.
